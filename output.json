@@ -1,5 +1,12 @@
 {
-  "test": {
+  "Bla": {
+    "bla": [
+      "bla",
+      1
+    ],
+    "label": "Text"
+  },
+  "Hello": {
     "bla": [
       "bla",
       1

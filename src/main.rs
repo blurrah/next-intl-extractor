@@ -1,4 +1,6 @@
 use std::{env, fs, path::Path};
+use console::{style, Term};
+use lazy_static::lazy_static;
 use serde_json::{from_str, json, to_string_pretty, Map, Value};
 use regex::Regex;
 use clap::Parser;
@@ -12,44 +14,52 @@ struct Args {
     watch: bool
 }
 
+lazy_static! {
+    static ref FILENAME_REGEX: Regex = Regex::new(r#"([^\.]+)\.labels\.json$"#).unwrap();
+}
+
 fn main() {
     let args = Args::parse();
+    let term = Term::stdout();
 
-    println!("Test: {}", args.watch);
-    let files = vec!["test.json"];
+    if args.watch {
+        term.write_line(&format!("{}", style("Starting in watch mode").yellow())).unwrap_or(());
+    }
+
+    let files = find_files();
     let mut merged_data: Map<String, Value> = Map::new();
 
     for file in files {
-        let contents = fs::read_to_string(file).expect("Unable to read file");
+        let contents = fs::read_to_string(&file).expect("Unable to read file");
         let data: Value = from_str(&contents).expect("Unable to parse JSON");
+        let file_name = file.split("/").last().unwrap_or("");
+        let name = FILENAME_REGEX.captures(&file_name).unwrap().get(1).unwrap().as_str();
 
-        let file_name = file.split('.').next().unwrap();
-        merged_data.insert(file_name.to_string(), data);
+        merged_data.insert(name.to_string(), data);
     }
     let merged_json = json!(merged_data);
     let merged_json_str = to_string_pretty(&merged_json).expect("Unable to serialize JSON");
 
-    find_files();
 
     fs::write("output.json", merged_json_str).expect("Unable to write file");
 
-
 }
 
-fn find_files() {
+// Find all *.labels.json files in the current directory and its subdirectories
+fn find_files() -> Vec<String> {
     let current_dir = env::current_dir().unwrap();
-
-    let re = Regex::new(r#"([^\.]+)\.labels\.json$"#).unwrap();
 
     // Recursively search for files matching the regex
     let mut files: Vec<String> = Vec::new();
-    search_files(&current_dir, &re, &mut files);
+    search_files(&current_dir, &FILENAME_REGEX, &mut files);
 
     // Process the found files
-    for file in files {
+    for file in &files {
         // Process each file here
         println!("Found file: {}", file);
     }
+
+    files
 }
 
 /// Recursively search for files in a directory that match a regex
