@@ -1,9 +1,13 @@
 use std::{env, fs, path::Path};
 use console::{style, Term};
+use files::search_files;
 use lazy_static::lazy_static;
+use notify::{Config, RecommendedWatcher, Watcher};
 use serde_json::{from_str, json, to_string_pretty, Map, Value};
 use regex::Regex;
 use clap::Parser;
+
+pub mod files;
 
 
 #[derive(Parser, Debug)]
@@ -18,13 +22,48 @@ lazy_static! {
     static ref FILENAME_REGEX: Regex = Regex::new(r#"([^\.]+)\.labels\.json$"#).unwrap();
 }
 
+fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
+
+    watcher.watch(path.as_ref(), notify::RecursiveMode::Recursive)?;
+
+    for res in rx {
+        match res {
+            Ok(event) => {
+                // log::info!("Event: {:?}", event);
+                check_event(event)
+            }
+            Err(e) => {
+                log::error!("Watch error: {:?}", e);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn check_event(event: notify::Event) {
+    match event.kind {
+        notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
+            log::info!("File created or modified: {:?}", event.paths);
+        }
+        notify::EventKind::Remove(_) => {
+            log::info!("File removed: {:?}", event.paths);
+        }
+        _ => {
+            log::info!("Other event: {:?}", event.paths);
+        }
+    }
+}
+
 fn main() {
+    // Set up logger
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     let args = Args::parse();
     let term = Term::stdout();
-
-    if args.watch {
-        term.write_line(&format!("{}", style("Starting in watch mode").yellow())).unwrap_or(());
-    }
+    let path = env::current_dir().unwrap();
 
     let files = find_files();
     let mut merged_data: Map<String, Value> = Map::new();
@@ -43,6 +82,15 @@ fn main() {
 
     fs::write("output.json", merged_json_str).expect("Unable to write file");
 
+    // Initial merge has been done, check if application should keep running in watch mode
+    if args.watch {
+        term.write_line(&format!("{}", style("Starting in watch mode").yellow())).unwrap_or(());
+
+        if let Err(error) = watch(path) {
+            log::error!("An error occurred while watching for file changes: {}", error);
+        }
+    }
+
 }
 
 // Find all *.labels.json files in the current directory and its subdirectories
@@ -50,8 +98,8 @@ fn find_files() -> Vec<String> {
     let current_dir = env::current_dir().unwrap();
 
     // Recursively search for files matching the regex
-    let mut files: Vec<String> = Vec::new();
-    search_files(&current_dir, &FILENAME_REGEX, &mut files);
+    // let mut files: Vec<String> = Vec::new();
+    let files = search_files(&current_dir, &FILENAME_REGEX);
 
     // Process the found files
     for file in &files {
@@ -62,26 +110,4 @@ fn find_files() -> Vec<String> {
     files
 }
 
-/// Recursively search for files in a directory that match a regex
-fn search_files(dir: &Path, re: &Regex, files: &mut Vec<String>) {
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if path.is_dir() {
-                    // Recursively search subdirectories
-                    search_files(&path, re, files);
-                } else if let Some(file_name) = path.file_name() {
-                    if let Some(file_name_str) = file_name.to_str() {
-                        if re.is_match(file_name_str) {
-                            // Add the file path to the list
-                            if let Some(file_path) = path.to_str() {
-                                files.push(file_path.to_string());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+
