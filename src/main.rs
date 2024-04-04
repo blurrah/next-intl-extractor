@@ -1,4 +1,4 @@
-use std::{env, fs, path::Path};
+use std::{collections::HashMap, env, fs, hash::Hash, path::{Path, PathBuf}, process::{exit, ExitCode}};
 use console::{style, Term};
 use files::search_files;
 use lazy_static::lazy_static;
@@ -22,7 +22,9 @@ lazy_static! {
     static ref FILENAME_REGEX: Regex = Regex::new(r#"([^\.]+)\.labels\.json$"#).unwrap();
 }
 
+
 fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
+    // multi producer single consumer queue
     let (tx, rx) = std::sync::mpsc::channel();
     let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
 
@@ -64,6 +66,7 @@ fn main() {
     let args = Args::parse();
     let term = Term::stdout();
     let path = env::current_dir().unwrap();
+    let mut file_map: HashMap<String, PathBuf> = HashMap::new();
 
     let files = find_files();
     let mut merged_data: Map<String, Value> = Map::new();
@@ -73,6 +76,18 @@ fn main() {
         let data: Value = from_str(&contents).expect("Unable to parse JSON");
         let file_name = file.split("/").last().unwrap_or("");
         let name = FILENAME_REGEX.captures(&file_name).unwrap().get(1).unwrap().as_str();
+
+        if file_map.contains_key(name) {
+            let current_file = file_map.get(name).unwrap().to_str().unwrap();
+            term.write_line(&format!("{}", style(format!("❌ Duplicate file found for: {}, [\"{}\", \"{}\"]", name, file, current_file)).red())).unwrap_or(());
+            exit(1)
+        }
+
+        // Save to hashmap for later use
+        file_map.insert(
+            name.to_string(),
+            PathBuf::from(file.clone())
+        );
 
         merged_data.insert(name.to_string(), data);
     }
