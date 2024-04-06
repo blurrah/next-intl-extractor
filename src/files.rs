@@ -30,7 +30,8 @@ pub fn search_files(dir: &Path, re: &Regex) -> Vec<String> {
         .filter(|path| path.is_file()) // Ensure we're dealing with files
         .filter_map(|path| {
             // Extract the file name as a &str
-            path.clone().file_name()
+            path.clone()
+                .file_name()
                 .and_then(|name| name.to_str())
                 // Match it against the regex, returning the path if it matches
                 .and_then(|name| if re.is_match(name) { Some(path) } else { None })
