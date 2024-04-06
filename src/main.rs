@@ -2,14 +2,13 @@ use clap::Parser;
 use console::{style, Term};
 use files::find_files;
 use lazy_static::lazy_static;
-use lib::write_to_output;
+use helpers::write_to_output;
 use regex::Regex;
-use serde_json::{from_str, json, to_string_pretty, Map, Value};
+use serde_json::{from_str, Map, Value};
 use std::{
-    borrow::Borrow,
     collections::HashMap,
     env, fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::exit,
     sync::Mutex,
 };
