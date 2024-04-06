@@ -2,15 +2,11 @@ use clap::Parser;
 use console::{style, Term};
 use files::find_files;
 use lazy_static::lazy_static;
-use helpers::write_to_output;
+use helpers::{append_to_path, write_to_output};
 use regex::Regex;
 use serde_json::{from_str, Map, Value};
 use std::{
-    collections::HashMap,
-    env, fs,
-    path::PathBuf,
-    process::exit,
-    sync::Mutex,
+    collections::HashMap, env, fs, iter, path::PathBuf, process::exit, sync::Mutex
 };
 use watch::watch;
 
@@ -48,6 +44,8 @@ fn main() {
     // Default path is the current working directory (could extend this with arguments)
     let path = env::current_dir().unwrap();
 
+    let output_path: PathBuf = append_to_path(&path, "output.json");
+
     let files = find_files(&FILENAME_REGEX);
 
     let mut merged_data: Map<String, Value> = Map::new();
@@ -63,7 +61,7 @@ fn main() {
     }
 
     // Write the merged data to the output file
-    if let Err(er) = write_to_output(&mut merged_data, &path) {
+    if let Err(er) = write_to_output(&mut merged_data, &output_path) {
         log::error!("An error occurred while writing to output file: {}", er);
         exit(1);
     }
