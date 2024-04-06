@@ -1,13 +1,14 @@
 use std::{collections::HashMap, env, fs, hash::Hash, path::{Path, PathBuf}, process::{exit, ExitCode}};
 use console::{style, Term};
-use files::search_files;
+use files::{find_files};
+use watch::watch;
 use lazy_static::lazy_static;
-use notify::{Config, RecommendedWatcher, Watcher};
 use serde_json::{from_str, json, to_string_pretty, Map, Value};
 use regex::Regex;
 use clap::Parser;
 
 pub mod files;
+pub mod watch;
 
 
 #[derive(Parser, Debug)]
@@ -22,53 +23,20 @@ lazy_static! {
     static ref FILENAME_REGEX: Regex = Regex::new(r#"([^\.]+)\.labels\.json$"#).unwrap();
 }
 
-
-fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
-    // multi producer single consumer queue
-    let (tx, rx) = std::sync::mpsc::channel();
-    let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
-
-    watcher.watch(path.as_ref(), notify::RecursiveMode::Recursive)?;
-
-    for res in rx {
-        match res {
-            Ok(event) => {
-                // log::info!("Event: {:?}", event);
-                check_event(event)
-            }
-            Err(e) => {
-                log::error!("Watch error: {:?}", e);
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn check_event(event: notify::Event) {
-    match event.kind {
-        notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
-            log::info!("File created or modified: {:?}", event.paths);
-        }
-        notify::EventKind::Remove(_) => {
-            log::info!("File removed: {:?}", event.paths);
-        }
-        _ => {
-            log::info!("Other event: {:?}", event.paths);
-        }
-    }
-}
-
 fn main() {
     // Set up logger
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-
-    let args = Args::parse();
     let term = Term::stdout();
+    // Parse arguments
+    let args = Args::parse();
+    // Default path is the current working directory (could extend this with arguments)
     let path = env::current_dir().unwrap();
+
+    // There can only be one file per component, holding these references to make sure there aren't duplicates
     let mut file_map: HashMap<String, PathBuf> = HashMap::new();
 
-    let files = find_files();
+    let files = find_files(&FILENAME_REGEX);
+
     let mut merged_data: Map<String, Value> = Map::new();
 
     for file in files {
@@ -77,6 +45,7 @@ fn main() {
         let file_name = file.split("/").last().unwrap_or("");
         let name = FILENAME_REGEX.captures(&file_name).unwrap().get(1).unwrap().as_str();
 
+        // We don't allow multiple files to merge to the same key, show an error when this initially happens
         if file_map.contains_key(name) {
             let current_file = file_map.get(name).unwrap().to_str().unwrap();
             term.write_line(&format!("{}", style(format!("❌ Duplicate file found for: {}, [\"{}\", \"{}\"]", name, file, current_file)).red())).unwrap_or(());
@@ -92,10 +61,15 @@ fn main() {
         merged_data.insert(name.to_string(), data);
     }
     let merged_json = json!(merged_data);
-    let merged_json_str = to_string_pretty(&merged_json).expect("Unable to serialize JSON");
+    let merged_string = match to_string_pretty(&merged_json) {
+        Ok(str) => str,
+        Err(e) => {
+            log::error!("An error occurred while serializing JSON: {}", e);
+            exit(1)
+        }
+    };
 
-
-    fs::write("output.json", merged_json_str).expect("Unable to write file");
+    fs::write("output.json", merged_string).expect("Unable to write file");
 
     // Initial merge has been done, check if application should keep running in watch mode
     if args.watch {
@@ -108,21 +82,6 @@ fn main() {
 
 }
 
-// Find all *.labels.json files in the current directory and its subdirectories
-fn find_files() -> Vec<String> {
-    let current_dir = env::current_dir().unwrap();
 
-    // Recursively search for files matching the regex
-    // let mut files: Vec<String> = Vec::new();
-    let files = search_files(&current_dir, &FILENAME_REGEX);
-
-    // Process the found files
-    for file in &files {
-        // Process each file here
-        println!("Found file: {}", file);
-    }
-
-    files
-}
 
 
