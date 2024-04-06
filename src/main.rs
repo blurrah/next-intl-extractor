@@ -10,6 +10,12 @@ use clap::Parser;
 pub mod files;
 pub mod watch;
 
+#[derive(Debug, Clone)]
+struct DuplicateFileError {
+    component: String,
+    file_paths: Vec<String>
+}
+
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -33,33 +39,17 @@ fn main() {
     let path = env::current_dir().unwrap();
 
     // There can only be one file per component, holding these references to make sure there aren't duplicates
-    let mut file_map: HashMap<String, PathBuf> = HashMap::new();
+    let file_map: HashMap<String, PathBuf> = HashMap::new();
 
     let files = find_files(&FILENAME_REGEX);
 
     let mut merged_data: Map<String, Value> = Map::new();
 
-    for file in files {
-        let contents = fs::read_to_string(&file).expect("Unable to read file");
-        let data: Value = from_str(&contents).expect("Unable to parse JSON");
-        let file_name = file.split('/').last().unwrap_or("");
-        let name = FILENAME_REGEX.captures(file_name).unwrap().get(1).unwrap().as_str();
-
-        // We don't allow multiple files to merge to the same key, show an error when this initially happens
-        if file_map.contains_key(name) {
-            let current_file = file_map.get(name).unwrap().to_str().unwrap();
-            term.write_line(&format!("{}", style(format!("❌ Duplicate file found for: {}, [\"{}\", \"{}\"]", name, file, current_file)).red())).unwrap_or(());
-            exit(1)
-        }
-
-        // Save to hashmap for later use
-        file_map.insert(
-            name.to_string(),
-            PathBuf::from(file.clone())
-        );
-
-        merged_data.insert(name.to_string(), data);
+    if let Err(e) = merge_data(files, file_map, &mut merged_data) {
+        term.write_line(&format!("{}", style(format!("❌ Duplicate file found for: {}, [{}]", e.component, e.file_paths.join(", "))).red())).unwrap_or(());
+            exit(1);
     }
+
     let merged_json = json!(merged_data);
     let merged_string = match to_string_pretty(&merged_json) {
         Ok(str) => str,
@@ -82,6 +72,30 @@ fn main() {
 
 }
 
+fn merge_data(files: Vec<String>, mut file_map: HashMap<String, PathBuf>, merged_data: &mut Map<String, Value>) -> Result<(), DuplicateFileError> {
+    for file in files {
+        let contents = fs::read_to_string(&file).expect("Unable to read file");
+        let data: Value = from_str(&contents).expect("Unable to parse JSON");
+        let file_name = file.split('/').last().unwrap_or("");
+        let name = FILENAME_REGEX.captures(file_name).unwrap().get(1).unwrap().as_str();
 
+        // We don't allow multiple files to merge to the same key, show an error when this initially happens
+        if file_map.contains_key(name) {
+            let current_file = file_map.get(name).unwrap().to_str().unwrap();
 
+            return Err(DuplicateFileError {
+                component: String::from(name),
+                file_paths: vec![file.clone(), String::from(current_file)],
+            });
+        };
 
+        // Save unique component and file combination
+        file_map.insert(
+            name.to_string(),
+            PathBuf::from(file.clone())
+        );
+
+        merged_data.insert(name.to_string(), data);
+    }
+    Ok(())
+}
