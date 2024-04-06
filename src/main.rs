@@ -1,6 +1,6 @@
-use std::{collections::HashMap, env, fs, hash::Hash, path::{Path, PathBuf}, process::{exit, ExitCode}};
+use std::{collections::HashMap, env, fs, path::PathBuf, process::exit};
 use console::{style, Term};
-use files::{find_files};
+use files::find_files;
 use watch::watch;
 use lazy_static::lazy_static;
 use serde_json::{from_str, json, to_string_pretty, Map, Value};
@@ -42,8 +42,8 @@ fn main() {
     for file in files {
         let contents = fs::read_to_string(&file).expect("Unable to read file");
         let data: Value = from_str(&contents).expect("Unable to parse JSON");
-        let file_name = file.split("/").last().unwrap_or("");
-        let name = FILENAME_REGEX.captures(&file_name).unwrap().get(1).unwrap().as_str();
+        let file_name = file.split('/').last().unwrap_or("");
+        let name = FILENAME_REGEX.captures(file_name).unwrap().get(1).unwrap().as_str();
 
         // We don't allow multiple files to merge to the same key, show an error when this initially happens
         if file_map.contains_key(name) {

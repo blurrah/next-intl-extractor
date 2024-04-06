@@ -9,7 +9,7 @@ pub fn find_files(re: &Regex) -> Vec<String> {
 
     // Recursively search for files matching the regex
     // let mut files: Vec<String> = Vec::new();
-    let files = search_files(&current_dir, &re);
+    let files = search_files(&current_dir, re);
 
     // Process the found files
     for file in &files {
