@@ -10,9 +10,12 @@ use std::{
 };
 use watch::watch;
 
+use crate::file_map::GlobalFileMap;
+
 pub mod files;
 pub mod helpers;
 pub mod watch;
+pub mod file_map;
 
 #[derive(Debug, Clone)]
 struct DuplicateFileError {
@@ -33,6 +36,9 @@ lazy_static! {
 
     // There can only be one label file per component, holding these references to make sure there aren't duplicates
     static ref GLOBAL_FILE_MAP: Mutex<HashMap<String, PathBuf>> = Mutex::new(HashMap::new());
+
+    // Global file map to store all the file contents
+    static ref GLOBAL: Mutex<GlobalFileMap> = Mutex::new(GlobalFileMap::new());
 }
 
 fn main() {
@@ -71,6 +77,7 @@ fn main() {
         term.write_line(&format!("{}", style("Starting in watch mode").yellow()))
             .unwrap_or(());
 
+        // Start watching for file changes, see watch.rs for implementation
         if let Err(error) = watch(path) {
             log::error!(
                 "An error occurred while watching for file changes: {}",

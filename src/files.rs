@@ -1,5 +1,7 @@
-use std::{env, path::Path};
+/// This file contains all the filesystem operations that are needed for the application
+/// to function. This includes finding files, reading files, and writing files.
 
+use std::{env, path::Path};
 use regex::Regex;
 use walkdir::WalkDir;
 
