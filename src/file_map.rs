@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 use serde_json::{Map, Value};
 
-use crate::DuplicateFileError;
+
 
 #[derive(Default)]
 pub struct GlobalFileMap {

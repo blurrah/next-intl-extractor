@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json::{from_str, Map, Value};
 use std::{
-    collections::HashMap, env, error::Error, fs, iter, path::PathBuf, process::exit,
+    collections::HashMap, env, fs, path::PathBuf, process::exit,
     sync::Mutex, time::Instant,
 };
 use watch::watch;
