@@ -1,21 +1,22 @@
 use clap::Parser;
 use console::{style, Term};
 use files::find_files;
-use lazy_static::lazy_static;
 use helpers::{append_to_path, write_to_output};
+use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json::{from_str, Map, Value};
 use std::{
-    collections::HashMap, env, fs, iter, path::PathBuf, process::exit, sync::Mutex
+    collections::HashMap, env, error::Error, fs, iter, path::PathBuf, process::exit,
+    sync::Mutex, time::Instant,
 };
 use watch::watch;
 
 use crate::file_map::GlobalFileMap;
 
+pub mod file_map;
 pub mod files;
 pub mod helpers;
 pub mod watch;
-pub mod file_map;
 
 #[derive(Debug, Clone)]
 struct DuplicateFileError {
@@ -24,11 +25,19 @@ struct DuplicateFileError {
 }
 
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
+#[command(author, version, about, long_about = None)]
 struct Args {
     /// Watch for file changes and merge them automatically
     #[arg(short, long, default_value = "false")]
     watch: bool,
+
+    /// Output file
+    #[clap(long, short, value_parser = clap::value_parser!(PathBuf), default_value="\"output.json\"")]
+    output: PathBuf,
+
+    /// Input directory
+    #[arg(short, long, value_parser = clap::value_parser!(PathBuf), default_value = "\".\"")]
+    input_dir: PathBuf,
 }
 
 lazy_static! {
@@ -42,17 +51,31 @@ lazy_static! {
 }
 
 fn main() {
+    let start = Instant::now();
     // Set up logger
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     let term = Term::stdout();
     // Parse arguments
     let args = Args::parse();
-    // Default path is the current working directory (could extend this with arguments)
-    let path = env::current_dir().unwrap();
 
-    let output_path: PathBuf = append_to_path(&path, "output.json");
+    // Check if the input directory exists, if not, use the current directory
+    // We might just throw an error as it already defaults back to current directory
+    let path = if args.input_dir.exists() && args.input_dir.is_dir() {
+        args.input_dir
+    } else {
+        log::info!("Input directory does not exist, falling back to current directory");
+        env::current_dir().unwrap()
+    };
 
-    let files = find_files(&FILENAME_REGEX);
+    let test = if args.output.parent().is_some() {
+        args.output
+    } else {
+        append_to_path(&path, args.output.to_str().unwrap())
+    };
+
+    // let output_path: PathBuf = if args.output.to_string_lossy().to_string().contains("/") { append_to_path(&path, "output.json");
+
+    let files = find_files(&path, &FILENAME_REGEX);
 
     let mut merged_data: Map<String, Value> = Map::new();
 
@@ -62,15 +85,19 @@ fn main() {
             e.component,
             e.file_paths.join(", ")
         );
-        term.write_line(&format!("{}", style(error_line).red())).unwrap_or(());
+        term.write_line(&format!("{}", style(error_line).red()))
+            .unwrap_or(());
         exit(1);
     }
 
     // Write the merged data to the output file
-    if let Err(er) = write_to_output(&mut merged_data, &output_path) {
+    if let Err(er) = write_to_output(&mut merged_data, &test) {
         log::error!("An error occurred while writing to output file: {}", er);
         exit(1);
     }
+
+    let duration = start.elapsed();
+    log::info!("Time elapsed: {:?}", duration);
 
     // Initial merge has been done, check if application should keep running in watch mode
     if args.watch {
@@ -78,7 +105,7 @@ fn main() {
             .unwrap_or(());
 
         // Start watching for file changes, see watch.rs for implementation
-        if let Err(error) = watch(path) {
+        if let Err(error) = watch(&path) {
             log::error!(
                 "An error occurred while watching for file changes: {}",
                 error

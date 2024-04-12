@@ -1,22 +1,23 @@
 /// This file contains all the filesystem operations that are needed for the application
 /// to function. This includes finding files, reading files, and writing files.
 
-use std::{env, path::Path};
+use std::{env, path::{Path, PathBuf}};
+use log::{info};
 use regex::Regex;
 use walkdir::WalkDir;
 
 // Find all *.labels.json files in the current directory and its subdirectories
-pub fn find_files(re: &Regex) -> Vec<String> {
-    let current_dir = env::current_dir().unwrap();
+pub fn find_files(dir: &PathBuf, re: &Regex) -> Vec<String> {
 
     // Recursively search for files matching the regex
     // let mut files: Vec<String> = Vec::new();
-    let files = search_files(&current_dir, re);
+    let files = search_files(&dir, re);
 
     // Process the found files
     for file in &files {
         // Process each file here
-        println!("Found file: {}", file);
+        let relative_path = Path::new(file).strip_prefix(&dir).unwrap().to_string_lossy().to_string();
+       info!("Found file: {}", relative_path);
     }
 
     files
