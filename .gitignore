@@ -1,3 +1,4 @@
 /target
 ./output.json
 .DS_Store
+node_modules/

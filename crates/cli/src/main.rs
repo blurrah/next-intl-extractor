@@ -32,11 +32,11 @@ struct Args {
     watch: bool,
 
     /// Output file
-    #[clap(long, short, value_parser = clap::value_parser!(PathBuf), default_value="\"output.json\"")]
+    #[clap(long, short, value_parser = clap::value_parser!(PathBuf), default_value="output.json")]
     output: PathBuf,
 
     /// Input directory
-    #[arg(short, long, value_parser = clap::value_parser!(PathBuf), default_value = "\".\"")]
+    #[arg(short, long, value_parser = clap::value_parser!(PathBuf), default_value = ".")]
     input_dir: PathBuf,
 }
 
@@ -50,7 +50,7 @@ lazy_static! {
     static ref GLOBAL: Mutex<GlobalFileMap> = Mutex::new(GlobalFileMap::new());
 }
 
-fn main() {
+pub fn main() {
     let start = Instant::now();
     // Set up logger
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -67,13 +67,11 @@ fn main() {
         env::current_dir().unwrap()
     };
 
-    let test = if args.output.parent().is_some() {
+    let output_path = if args.output.parent().is_some() {
         args.output
     } else {
         append_to_path(&path, args.output.to_str().unwrap())
     };
-
-    // let output_path: PathBuf = if args.output.to_string_lossy().to_string().contains("/") { append_to_path(&path, "output.json");
 
     let files = find_files(&path, &FILENAME_REGEX);
 
@@ -91,7 +89,7 @@ fn main() {
     }
 
     // Write the merged data to the output file
-    if let Err(er) = write_to_output(&mut merged_data, &test) {
+    if let Err(er) = write_to_output(&mut merged_data, &output_path) {
         log::error!("An error occurred while writing to output file: {}", er);
         exit(1);
     }
