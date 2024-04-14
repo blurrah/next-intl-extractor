@@ -63,8 +63,8 @@ pub fn main() {
     let path = if args.input_dir.exists() && args.input_dir.is_dir() {
         args.input_dir
     } else {
-        log::info!("Input directory does not exist, falling back to current directory");
-        env::current_dir().unwrap()
+        log::error!("Input directory {} does not exist", args.input_dir.display());
+        exit(1)
     };
 
     let output_path = if args.output.parent().is_some() {
