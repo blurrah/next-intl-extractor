@@ -152,8 +152,7 @@ pub fn check_event(event: notify::Event, output_path: &PathBuf) {
 
             write_to_output(&mut merged_data, output_path).expect("Test");
         }
-        _ => {
-            log::debug!("Other event: {:?}", event.paths);
-        }
+        // We don't need to handle other events
+        _ => ()
     }
 }
