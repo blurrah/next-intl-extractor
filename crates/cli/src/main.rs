@@ -6,12 +6,11 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json::{from_str, Map, Value};
 use std::{
-    collections::HashMap, env, fs, path::PathBuf, process::exit,
-    sync::Mutex, time::Instant,
+    collections::HashMap, env, fs, hash::Hash, path::PathBuf, process::exit, sync::Mutex, time::Instant
 };
 use watch::watch;
 
-use crate::file_map::GlobalFileMap;
+use crate::file_map::{FileMap};
 
 pub mod file_map;
 pub mod files;
@@ -47,7 +46,8 @@ lazy_static! {
     static ref GLOBAL_FILE_MAP: Mutex<HashMap<String, PathBuf>> = Mutex::new(HashMap::new());
 
     // Global file map to store all the file contents
-    static ref GLOBAL: Mutex<GlobalFileMap> = Mutex::new(GlobalFileMap::new());
+    // TODO: Rename to GLOBAL_FILE_MAP once replaced
+    static ref GLOBAL: Mutex<HashMap<String,FileMap>> = Mutex::new(HashMap::new());
 }
 
 pub fn main() {
@@ -77,7 +77,9 @@ pub fn main() {
 
     let mut merged_data: Map<String, Value> = Map::new();
 
-    if let Err(e) = merge_data(files, &mut merged_data) {
+
+
+    if let Err(e) = create_initial_map(files) {
         let error_line = format!(
             "❌ Duplicate file found for: {}, [{}]",
             e.component,
@@ -87,6 +89,11 @@ pub fn main() {
             .unwrap_or(());
         exit(1);
     }
+
+    for (key, value) in GLOBAL.lock().unwrap().iter() {
+        merged_data.insert(key.clone(), value.contents.clone());
+    }
+
 
     // Write the merged data to the output file
     if let Err(er) = write_to_output(&mut merged_data, &output_path) {
@@ -112,13 +119,10 @@ pub fn main() {
     }
 }
 
-/// Merge data from given files into a single deserialized JSON object
+/// Create initial map that will be used to merge data from files
 /// It will also check for duplicate files for the same component and return an error when that happens
-fn merge_data(
-    files: Vec<String>,
-    merged_data: &mut Map<String, Value>,
-) -> Result<(), DuplicateFileError> {
-    let mut map = GLOBAL_FILE_MAP.lock().unwrap();
+fn create_initial_map(files: Vec<String>) -> Result<(), DuplicateFileError>{
+    let mut map = GLOBAL.lock().unwrap();
     for file in files {
         let contents = fs::read_to_string(&file).expect("Unable to read file");
         let data: Value = from_str(&contents).expect("Unable to parse JSON");
@@ -140,7 +144,7 @@ fn merge_data(
 
         // We don't allow multiple files to merge to the same key, show an error when this initially happens
         if map.contains_key(name) {
-            let current_file = map.get(name).unwrap().to_str().unwrap();
+            let current_file = map.get(name).unwrap().file_path.to_str().unwrap();
 
             return Err(DuplicateFileError {
                 component: String::from(name),
@@ -148,10 +152,8 @@ fn merge_data(
             });
         };
 
-        // Save unique component and file combination
-        map.insert(name.to_string(), PathBuf::from(file.clone()));
-
-        merged_data.insert(name.to_string(), data);
+        map.insert(name.to_string(), FileMap { name: name.to_string(), file_path: PathBuf::from(file.clone()), contents: data.clone()});
     }
     Ok(())
 }
+
