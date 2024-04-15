@@ -77,8 +77,6 @@ pub fn main() {
 
     let mut merged_data: Map<String, Value> = Map::new();
 
-
-
     if let Err(e) = create_initial_map(files) {
         let error_line = format!(
             "❌ Duplicate file found for: {}, [{}]",
@@ -93,7 +91,6 @@ pub fn main() {
     for (key, value) in GLOBAL.lock().unwrap().iter() {
         merged_data.insert(key.clone(), value.contents.clone());
     }
-
 
     // Write the merged data to the output file
     if let Err(er) = write_to_output(&mut merged_data, &output_path) {
@@ -110,7 +107,7 @@ pub fn main() {
             .unwrap_or(());
 
         // Start watching for file changes, see watch.rs for implementation
-        if let Err(error) = watch(&path) {
+        if let Err(error) = watch(&path, &output_path) {
             log::error!(
                 "An error occurred while watching for file changes: {}",
                 error
@@ -152,7 +149,7 @@ fn create_initial_map(files: Vec<String>) -> Result<(), DuplicateFileError>{
             });
         };
 
-        map.insert(name.to_string(), FileMap { name: name.to_string(), file_path: PathBuf::from(file.clone()), contents: data.clone()});
+        map.insert(name.to_string(), FileMap { name: name.to_string(), file_path: fs::canonicalize(PathBuf::from(file.clone())).unwrap(), contents: data.clone()});
     }
     Ok(())
 }
