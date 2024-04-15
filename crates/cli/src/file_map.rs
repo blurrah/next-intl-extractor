@@ -9,8 +9,9 @@ pub struct FileMap {
     pub contents: Value,
 }
 
-
-pub fn merge_map_contents_to_json(map: HashMap<String, FileMap>) -> Result<Map<String,Value>, Box<dyn std::error::Error>> {
+pub fn merge_map_contents_to_json(
+    map: HashMap<String, FileMap>,
+) -> Result<Map<String, Value>, Box<dyn std::error::Error>> {
     let mut merged_data: Map<String, Value> = Map::new();
 
     for (key, value) in map.iter() {

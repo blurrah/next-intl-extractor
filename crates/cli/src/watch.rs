@@ -1,4 +1,7 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use notify::{Config, RecommendedWatcher, Watcher};
 use serde_json::{Map, Value};
@@ -54,7 +57,10 @@ pub fn check_event(event: notify::Event, output_path: &PathBuf) {
                 let absolute_path = fs::canonicalize(path).expect("Unable to get absolute path");
 
                 // Check if the file is already in the map
-                if let Some(value) = map.iter_mut().find(|(_, val)| val.file_path == absolute_path) {
+                if let Some(value) = map
+                    .iter_mut()
+                    .find(|(_, val)| val.file_path == absolute_path)
+                {
                     // Update the contents
                     log::debug!("Found existing file {}, updating contents", value.1.name);
                     let contents = std::fs::read_to_string(path).expect("Unable to read file");
@@ -66,7 +72,7 @@ pub fn check_event(event: notify::Event, output_path: &PathBuf) {
 
                     let name = match FILENAME_REGEX.captures(file_name) {
                         Some(captures) => captures.get(1).map(|m| m.as_str()).unwrap_or(""),
-                        None => ""
+                        None => "",
                     };
 
                     if name.is_empty() {
@@ -128,7 +134,11 @@ pub fn check_event(event: notify::Event, output_path: &PathBuf) {
                 let absolute_path = match fs::canonicalize(path) {
                     Ok(path) => path,
                     Err(e) => {
-                        log::debug!("Unable to get absolute path for {}: {}", path.to_string_lossy(), e);
+                        log::debug!(
+                            "Unable to get absolute path for {}: {}",
+                            path.to_string_lossy(),
+                            e
+                        );
                         continue;
                     }
                 };
@@ -153,6 +163,6 @@ pub fn check_event(event: notify::Event, output_path: &PathBuf) {
             write_to_output(&mut merged_data, output_path).expect("Test");
         }
         // We don't need to handle other events
-        _ => ()
+        _ => (),
     }
 }

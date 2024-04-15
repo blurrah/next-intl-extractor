@@ -5,12 +5,10 @@ use helpers::{append_to_path, write_to_output};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json::{from_str, Map, Value};
-use std::{
-    collections::HashMap, env, fs, hash::Hash, path::PathBuf, process::exit, sync::Mutex, time::Instant
-};
+use std::{collections::HashMap, fs, path::PathBuf, process::exit, sync::Mutex, time::Instant};
 use watch::watch;
 
-use crate::file_map::{FileMap};
+use crate::file_map::FileMap;
 
 pub mod file_map;
 pub mod files;
@@ -63,7 +61,10 @@ pub fn main() {
     let path = if args.input_dir.exists() && args.input_dir.is_dir() {
         args.input_dir
     } else {
-        log::error!("Input directory {} does not exist", args.input_dir.display());
+        log::error!(
+            "Input directory {} does not exist",
+            args.input_dir.display()
+        );
         exit(1)
     };
 
@@ -118,7 +119,7 @@ pub fn main() {
 
 /// Create initial map that will be used to merge data from files
 /// It will also check for duplicate files for the same component and return an error when that happens
-fn create_initial_map(files: Vec<String>) -> Result<(), DuplicateFileError>{
+fn create_initial_map(files: Vec<String>) -> Result<(), DuplicateFileError> {
     let mut map = GLOBAL.lock().unwrap();
     for file in files {
         let contents = fs::read_to_string(&file).expect("Unable to read file");
@@ -149,8 +150,14 @@ fn create_initial_map(files: Vec<String>) -> Result<(), DuplicateFileError>{
             });
         };
 
-        map.insert(name.to_string(), FileMap { name: name.to_string(), file_path: fs::canonicalize(PathBuf::from(file.clone())).unwrap(), contents: data.clone()});
+        map.insert(
+            name.to_string(),
+            FileMap {
+                name: name.to_string(),
+                file_path: fs::canonicalize(PathBuf::from(file.clone())).unwrap(),
+                contents: data.clone(),
+            },
+        );
     }
     Ok(())
 }
-
