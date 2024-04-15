@@ -3,8 +3,15 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "bin": "npm/i18n-label-merger",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:windows": "cargo build --release --target=x86_64-pc-windows-gnu",
+    "build:linux": "cargo build --release --target=x86_64-unknown-linux-gnu",
+    "build:mac": "cargo build --release --target=x86_64-apple-darwin",
+    "build:mac-arm64": "cargo build --release --target=aarch64-apple-darwin",
+    "build:all": "npm run build:windows && npm run build:linux && npm run build:mac && npm run build:mac-arm64",
+    "postinstall": "node ./npm/postinstall.js"
   },
   "keywords": [],
   "author": "",

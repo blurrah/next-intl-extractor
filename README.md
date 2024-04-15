@@ -16,3 +16,5 @@ So naturally the codebase is quite a mess with mixed concepts, will be better as
     - Debounce updates when for example git operations are being done
 - Warn when invalid values are used (Only `String(String)` and `Object(Map<String, RecursiveReference>)` should be allowed)
     - Show where the invalid value is being used in the source file
+- Available on NPM as bin
+    - With binary-install for now, possibly napi-rs or wasm-pack
