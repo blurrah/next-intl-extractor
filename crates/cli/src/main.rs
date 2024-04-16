@@ -8,13 +8,11 @@ use helpers::write_to_output;
 
 use serde_json::{from_str, Map, Value};
 use std::{env, fs, path::PathBuf, process::exit, time::Instant};
-use thiserror::Error;
 
 pub mod file_map;
 pub mod files;
 pub mod helpers;
 pub mod watch;
-
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -148,7 +146,6 @@ fn create_initial_map(files: Vec<String>) -> Result<()> {
 
         // We don't allow multiple files to merge to the same key, show an error when this initially happens
         if map.contains_key(name) {
-
             let current_file = map
                 .get(name)
                 .ok_or_else(|| anyhow!("Failed to get file from map"))?
@@ -156,8 +153,11 @@ fn create_initial_map(files: Vec<String>) -> Result<()> {
                 .to_string_lossy()
                 .to_string();
 
-
-            return Err(anyhow!("Duplicate file found for: {}, [{:?}]", name, vec![file.clone(), current_file]));
+            return Err(anyhow!(
+                "Duplicate file found for: {}, [{:?}]",
+                name,
+                vec![file.clone(), current_file]
+            ));
         };
 
         map.insert(
