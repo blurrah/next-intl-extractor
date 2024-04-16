@@ -1,25 +1,23 @@
-use log::info;
+use log::{debug, info};
 use regex::Regex;
 /// This file contains all the filesystem operations that are needed for the application
 /// to function. This includes finding files, reading files, and writing files.
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-// Find all *.labels.json files in the current directory and its subdirectories
+/// Find all *.labels.json files in the current directory and its subdirectories
 pub fn find_files(dir: &PathBuf, re: &Regex) -> Vec<String> {
-    // Recursively search for files matching the regex
-    // let mut files: Vec<String> = Vec::new();
     let files = search_files(dir, re);
 
-    // Process the found files
-    for file in &files {
-        // Process each file here
-        let relative_path = Path::new(file)
-            .strip_prefix(dir)
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
-        info!("Found file: {}", relative_path);
+    // Only run this code path if the debug log level is actually enabled
+    if log::log_enabled!(log::Level::Debug) {
+        for file in &files {
+            let relative_path = Path::new(file)
+                .strip_prefix(dir)
+                .unwrap()
+                .to_string_lossy();
+            debug!("Found file: {}", relative_path);
+        }
     }
 
     files
