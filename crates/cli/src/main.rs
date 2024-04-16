@@ -1,26 +1,20 @@
 use crate::file_map::{FileMap, FILENAME_REGEX, GLOBAL_FILE_MAP};
 use crate::watch::watch;
+use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use console::{style, Term};
 use files::find_files;
-use helpers::{write_to_output};
-
+use helpers::write_to_output;
 
 use serde_json::{from_str, Map, Value};
-use std::{
-    env, fs, path::PathBuf, process::exit, time::Instant,
-};
+use std::{env, fs, path::PathBuf, process::exit, time::Instant};
+use thiserror::Error;
 
 pub mod file_map;
 pub mod files;
 pub mod helpers;
 pub mod watch;
 
-#[derive(Debug, Clone)]
-struct DuplicateFileError {
-    component: String,
-    file_paths: Vec<String>,
-}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -38,7 +32,7 @@ struct Args {
     input_dir: PathBuf,
 }
 
-pub fn main() {
+pub fn main() -> Result<()> {
     let start = Instant::now();
     // Set up logger
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -90,26 +84,28 @@ pub fn main() {
 
     let mut merged_data: Map<String, Value> = Map::new();
 
-    if let Err(e) = create_initial_map(files) {
-        let error_line = format!(
-            "❌ Duplicate file found for: {}, [{}]",
-            e.component,
-            e.file_paths.join(", ")
-        );
-        term.write_line(&format!("{}", style(error_line).red()))
-            .unwrap_or(());
-        exit(1);
-    }
+    create_initial_map(files).with_context(|| "An error occured while creating the initial map")?;
 
-    for (key, value) in GLOBAL_FILE_MAP.lock().unwrap().iter() {
+    for (key, value) in GLOBAL_FILE_MAP
+        .lock()
+        .map_err(|e| {
+            anyhow!(
+                "An error occured while trying to lock GLOBAL_FILE_MAP: {}",
+                e
+            )
+        })?
+        .iter()
+    {
         merged_data.insert(key.clone(), value.contents.clone());
     }
 
     // Write the merged data to the output file
-    if let Err(er) = write_to_output(&mut merged_data, &output_path) {
-        log::error!("An error occurred while writing to output file: {}", er);
-        exit(1);
-    }
+    write_to_output(&mut merged_data, &output_path).with_context(|| {
+        format!(
+            "An error occurred while writing to output file {}",
+            &output_path.to_string_lossy()
+        )
+    })?;
 
     let duration = start.elapsed();
     log::info!("Time elapsed: {:?}", duration);
@@ -120,22 +116,20 @@ pub fn main() {
             .unwrap_or(());
 
         // Start watching for file changes, see watch.rs for implementation
-        if let Err(error) = watch(&path, &output_path) {
-            log::error!(
-                "An error occurred while watching for file changes: {}",
-                error
-            );
-        }
+        watch(&path, &output_path)
+            .with_context(|| "An error occurred while watching for file changes")?;
     }
+
+    Ok(())
 }
 
 /// Create initial map that will be used to merge data from files
 /// It will also check for duplicate files for the same component and return an error when that happens
-fn create_initial_map(files: Vec<String>) -> Result<(), DuplicateFileError> {
+fn create_initial_map(files: Vec<String>) -> Result<()> {
     let mut map = GLOBAL_FILE_MAP.lock().unwrap();
     for file in files {
         let contents = fs::read_to_string(&file).expect("Unable to read file");
-        let data: Value = from_str(&contents).expect("Unable to parse JSON");
+        let data: Value = from_str(&contents).unwrap();
         let file_name = file.split('/').last().unwrap_or("");
         let name = FILENAME_REGEX
             .captures(file_name)
@@ -154,12 +148,16 @@ fn create_initial_map(files: Vec<String>) -> Result<(), DuplicateFileError> {
 
         // We don't allow multiple files to merge to the same key, show an error when this initially happens
         if map.contains_key(name) {
-            let current_file = map.get(name).unwrap().file_path.to_str().unwrap();
 
-            return Err(DuplicateFileError {
-                component: String::from(name),
-                file_paths: vec![file.clone(), String::from(current_file)],
-            });
+            let current_file = map
+                .get(name)
+                .ok_or_else(|| anyhow!("Failed to get file from map"))?
+                .file_path
+                .to_string_lossy()
+                .to_string();
+
+
+            return Err(anyhow!("Duplicate file found for: {}, [{:?}]", name, vec![file.clone(), current_file]));
         };
 
         map.insert(
