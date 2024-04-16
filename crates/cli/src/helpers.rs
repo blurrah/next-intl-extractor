@@ -17,15 +17,3 @@ pub fn write_to_output(
 
     Ok(())
 }
-
-/// Helper function to append a given string to a PathBuf
-///
-/// Example
-/// ```rust
-/// append_to_path(&PathBuf::from("/path/to"), "file.json"); // "/path/to/file.json"
-/// ```
-pub fn append_to_path(path: &Path, append: &str) -> PathBuf {
-    let mut path = path.to_path_buf().clone().into_os_string();
-    path.push(append);
-    path.into()
-}
