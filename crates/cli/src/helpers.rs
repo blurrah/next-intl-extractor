@@ -1,6 +1,6 @@
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{PathBuf},
 };
 
 use serde_json::{json, to_string_pretty, Map, Value};

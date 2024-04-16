@@ -1,4 +1,4 @@
-use log::{debug, info};
+use log::{debug};
 use regex::Regex;
 /// This file contains all the filesystem operations that are needed for the application
 /// to function. This includes finding files, reading files, and writing files.

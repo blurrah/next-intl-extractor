@@ -3,12 +3,12 @@ use crate::watch::watch;
 use clap::Parser;
 use console::{style, Term};
 use files::find_files;
-use helpers::{append_to_path, write_to_output};
-use lazy_static::lazy_static;
-use regex::Regex;
+use helpers::{write_to_output};
+
+
 use serde_json::{from_str, Map, Value};
 use std::{
-    collections::HashMap, env, fs, path::PathBuf, process::exit, sync::Mutex, time::Instant,
+    env, fs, path::PathBuf, process::exit, time::Instant,
 };
 
 pub mod file_map;
