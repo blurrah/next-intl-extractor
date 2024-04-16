@@ -43,11 +43,10 @@ pub fn main() -> Result<()> {
     let path = if args.input_dir.exists() && args.input_dir.is_dir() {
         args.input_dir
     } else {
-        log::error!(
+        return Err(anyhow!(
             "Input directory {} does not exist",
             args.input_dir.display()
-        );
-        exit(1)
+        ))?;
     };
 
     // If the output file does not have a parent directory, append it to the current working directory
@@ -55,27 +54,15 @@ pub fn main() -> Result<()> {
         args.output
     } else {
         // Output file does not have a parent directory, append it to the current working directory
-        match env::current_dir() {
-            Ok(cwd) => {
-                let output_file_name = match args.output.file_name() {
-                    Some(name) => name,
-                    None => {
-                        format!(
-                            "Failed to get file name from output path: {:?}",
-                            args.output
-                        );
-                        exit(1);
-                    }
-                };
-                let mut output_path = cwd;
-                output_path.push(output_file_name);
-                output_path
-            }
-            Err(err) => {
-                format!("Failed to get current working directory: {}", err);
-                exit(1);
-            }
-        }
+        let cwd = env::current_dir().context("Failed to get current working directory")?;
+        let output_file_name = args
+            .output
+            .file_name()
+            .context("Failed to get file name from output path")?;
+        let mut output_path = cwd;
+        output_path.push(output_file_name);
+
+        output_path
     };
 
     let files = find_files(&path, &FILENAME_REGEX);
