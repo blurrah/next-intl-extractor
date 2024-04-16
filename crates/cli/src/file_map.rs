@@ -1,8 +1,8 @@
+use anyhow::{anyhow, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json::{from_str, Map, Value};
 use std::{collections::HashMap, fs, path::PathBuf, sync::Mutex};
-use anyhow::{anyhow, Result};
 
 #[derive(Eq, PartialEq)]
 pub struct FileMap {
@@ -12,9 +12,7 @@ pub struct FileMap {
 }
 
 /// Merge the contents of all the files into a single JSON object
-pub fn merge_map_contents_to_json(
-    map: HashMap<String, FileMap>,
-) -> Result<Map<String, Value>> {
+pub fn merge_map_contents_to_json(map: HashMap<String, FileMap>) -> Result<Map<String, Value>> {
     let merged_data: Map<String, Value> = map
         .into_iter()
         .map(|(key, value)| (key, value.contents))

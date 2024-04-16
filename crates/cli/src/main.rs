@@ -1,4 +1,4 @@
-use crate::file_map::{create_initial_map, FileMap, FILENAME_REGEX, GLOBAL_FILE_MAP};
+use crate::file_map::{create_initial_map, FILENAME_REGEX, GLOBAL_FILE_MAP};
 use crate::watch::watch;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
@@ -6,8 +6,8 @@ use console::{style, Term};
 use files::find_files;
 use helpers::write_to_output;
 
-use serde_json::{from_str, Map, Value};
-use std::{env, fs, path::PathBuf, time::Instant};
+use serde_json::{Map, Value};
+use std::{env, path::PathBuf, time::Instant};
 
 pub mod file_map;
 pub mod files;
@@ -107,5 +107,3 @@ fn main() -> Result<()> {
 
     Ok(())
 }
-
-
