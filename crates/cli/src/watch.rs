@@ -6,7 +6,11 @@ use std::{
 use notify::{Config, RecommendedWatcher, Watcher};
 use serde_json::{Map, Value};
 
-use crate::{file_map::FileMap, helpers::write_to_output, FILENAME_REGEX, GLOBAL};
+use crate::{
+    file_map::{FileMap, GLOBAL_FILE_MAP},
+    helpers::write_to_output,
+    FILENAME_REGEX,
+};
 
 pub fn watch<P: AsRef<Path>>(path: P, output_path: &PathBuf) -> notify::Result<()> {
     // multi producer single consumer queue
@@ -35,7 +39,7 @@ pub fn check_event(event: notify::Event, output_path: &PathBuf) {
     match event.kind {
         notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
             let mut merged_data: Map<String, Value> = Map::new();
-            let mut map = GLOBAL.lock().unwrap();
+            let mut map = GLOBAL_FILE_MAP.lock().unwrap();
 
             log::debug!("File created or modified: {:?}", event.paths);
             for path in &event.paths {
@@ -113,7 +117,7 @@ pub fn check_event(event: notify::Event, output_path: &PathBuf) {
         notify::EventKind::Remove(_) => {
             log::debug!("File removed: {:?}", event.paths);
             let mut merged_data: Map<String, Value> = Map::new();
-            let mut map = GLOBAL.lock().unwrap();
+            let mut map = GLOBAL_FILE_MAP.lock().unwrap();
 
             for path in &event.paths {
                 // Get the file name

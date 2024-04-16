@@ -1,5 +1,7 @@
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde_json::{Map, Value};
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 
 #[derive(Eq, PartialEq)]
 pub struct FileMap {
@@ -18,4 +20,12 @@ pub fn merge_map_contents_to_json(
         .collect();
 
     Ok(merged_data)
+}
+
+lazy_static! {
+    // Regex to match the file name
+    pub static ref FILENAME_REGEX: Regex = Regex::new(r#"([^\.]+)\.labels\.json$"#).unwrap();
+
+    // Global file map to store all the file contents
+    pub static ref GLOBAL_FILE_MAP: Mutex<HashMap<String,FileMap>> = Mutex::new(HashMap::new());
 }

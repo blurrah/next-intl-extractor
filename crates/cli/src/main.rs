@@ -1,3 +1,5 @@
+use crate::file_map::{FileMap, FILENAME_REGEX, GLOBAL_FILE_MAP};
+use crate::watch::watch;
 use clap::Parser;
 use console::{style, Term};
 use files::find_files;
@@ -5,10 +7,9 @@ use helpers::{append_to_path, write_to_output};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json::{from_str, Map, Value};
-use std::{collections::HashMap, fs, path::PathBuf, process::exit, sync::Mutex, time::Instant};
-use watch::watch;
-
-use crate::file_map::FileMap;
+use std::{
+    collections::HashMap, env, fs, path::PathBuf, process::exit, sync::Mutex, time::Instant,
+};
 
 pub mod file_map;
 pub mod files;
@@ -37,17 +38,6 @@ struct Args {
     input_dir: PathBuf,
 }
 
-lazy_static! {
-    static ref FILENAME_REGEX: Regex = Regex::new(r#"([^\.]+)\.labels\.json$"#).unwrap();
-
-    // There can only be one label file per component, holding these references to make sure there aren't duplicates
-    static ref GLOBAL_FILE_MAP: Mutex<HashMap<String, PathBuf>> = Mutex::new(HashMap::new());
-
-    // Global file map to store all the file contents
-    // TODO: Rename to GLOBAL_FILE_MAP once replaced
-    static ref GLOBAL: Mutex<HashMap<String,FileMap>> = Mutex::new(HashMap::new());
-}
-
 pub fn main() {
     let start = Instant::now();
     // Set up logger
@@ -68,10 +58,32 @@ pub fn main() {
         exit(1)
     };
 
+    // If the output file does not have a parent directory, append it to the current working directory
     let output_path = if args.output.parent().is_some() {
         args.output
     } else {
-        append_to_path(&path, args.output.to_str().unwrap())
+        // Output file does not have a parent directory, append it to the current working directory
+        match env::current_dir() {
+            Ok(cwd) => {
+                let output_file_name = match args.output.file_name() {
+                    Some(name) => name,
+                    None => {
+                        format!(
+                            "Failed to get file name from output path: {:?}",
+                            args.output
+                        );
+                        exit(1);
+                    }
+                };
+                let mut output_path = cwd;
+                output_path.push(output_file_name);
+                output_path
+            }
+            Err(err) => {
+                format!("Failed to get current working directory: {}", err);
+                exit(1);
+            }
+        }
     };
 
     let files = find_files(&path, &FILENAME_REGEX);
@@ -89,7 +101,7 @@ pub fn main() {
         exit(1);
     }
 
-    for (key, value) in GLOBAL.lock().unwrap().iter() {
+    for (key, value) in GLOBAL_FILE_MAP.lock().unwrap().iter() {
         merged_data.insert(key.clone(), value.contents.clone());
     }
 
@@ -120,7 +132,7 @@ pub fn main() {
 /// Create initial map that will be used to merge data from files
 /// It will also check for duplicate files for the same component and return an error when that happens
 fn create_initial_map(files: Vec<String>) -> Result<(), DuplicateFileError> {
-    let mut map = GLOBAL.lock().unwrap();
+    let mut map = GLOBAL_FILE_MAP.lock().unwrap();
     for file in files {
         let contents = fs::read_to_string(&file).expect("Unable to read file");
         let data: Value = from_str(&contents).expect("Unable to parse JSON");

@@ -12,10 +12,7 @@ pub fn find_files(dir: &PathBuf, re: &Regex) -> Vec<String> {
     // Only run this code path if the debug log level is actually enabled
     if log::log_enabled!(log::Level::Debug) {
         for file in &files {
-            let relative_path = Path::new(file)
-                .strip_prefix(dir)
-                .unwrap()
-                .to_string_lossy();
+            let relative_path = Path::new(file).strip_prefix(dir).unwrap().to_string_lossy();
             debug!("Found file: {}", relative_path);
         }
     }
