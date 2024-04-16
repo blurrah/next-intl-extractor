@@ -1,4 +1,4 @@
-use crate::file_map::{FileMap, FILENAME_REGEX, GLOBAL_FILE_MAP};
+use crate::file_map::{create_initial_map, FileMap, FILENAME_REGEX, GLOBAL_FILE_MAP};
 use crate::watch::watch;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
@@ -30,7 +30,7 @@ struct Args {
     input_dir: PathBuf,
 }
 
-pub fn main() -> Result<()> {
+fn main() -> Result<()> {
     let start = Instant::now();
     // Set up logger
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -108,53 +108,4 @@ pub fn main() -> Result<()> {
     Ok(())
 }
 
-/// Create initial map that will be used to merge data from files
-/// It will also check for duplicate files for the same component and return an error when that happens
-fn create_initial_map(files: Vec<String>) -> Result<()> {
-    let mut map = GLOBAL_FILE_MAP.lock().unwrap();
-    for file in files {
-        let contents = fs::read_to_string(&file).expect("Unable to read file");
-        let data: Value = from_str(&contents).unwrap();
-        let file_name = file.split('/').last().unwrap_or("");
-        let name = FILENAME_REGEX
-            .captures(file_name)
-            .unwrap()
-            .get(1)
-            .unwrap()
-            .as_str();
 
-        if name.is_empty() {
-            log::warn!(
-                "File name does not match the expected pattern: {}",
-                file_name
-            );
-            continue;
-        }
-
-        // We don't allow multiple files to merge to the same key, show an error when this initially happens
-        if map.contains_key(name) {
-            let current_file = map
-                .get(name)
-                .ok_or_else(|| anyhow!("Failed to get file from map"))?
-                .file_path
-                .to_string_lossy()
-                .to_string();
-
-            return Err(anyhow!(
-                "Duplicate file found for: {}, [{:?}]",
-                name,
-                vec![file.clone(), current_file]
-            ));
-        };
-
-        map.insert(
-            name.to_string(),
-            FileMap {
-                name: name.to_string(),
-                file_path: fs::canonicalize(PathBuf::from(file.clone())).unwrap(),
-                contents: data.clone(),
-            },
-        );
-    }
-    Ok(())
-}
