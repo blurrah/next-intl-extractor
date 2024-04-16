@@ -7,7 +7,7 @@ use files::find_files;
 use helpers::write_to_output;
 
 use serde_json::{from_str, Map, Value};
-use std::{env, fs, path::PathBuf, process::exit, time::Instant};
+use std::{env, fs, path::PathBuf, time::Instant};
 
 pub mod file_map;
 pub mod files;
