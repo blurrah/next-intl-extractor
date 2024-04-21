@@ -55,18 +55,15 @@ jobs:
 
       - name: Build (MacOS)
         if: matrix.build == 'macos'
-        working-directory: ${{ env.WORKING_DIR }}
         run: cargo build --release
 
       - name: Create artifact directory
-        working-directory: ${{ env.WORKING_DIR }}
         run: |
           mkdir ${{ env.RELEASE_DIR }}
           mkdir dist
 
       - name: Create tarball (MacOS)
         if: matrix.build == 'macos'
-        working-directory: ${{ env.WORKING_DIR }}
         run: |
           mv ./target/release/${{ env.RELEASE_BIN }} ./dist/${{ env.RELEASE_BIN }}
           7z a -ttar -so -an ./dist | 7z a -si ./${{ env.RELEASE_DIR }}/${{ env.RELEASE_BIN }}-${{ steps.get_version.outputs.VERSION }}-${{ env.MACOS_ARM_TARGET }}.tar.gz
@@ -75,4 +72,4 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: ${{ matrix.build }}
-          path: ./${{ env.WORKING_DIR }}/${{ env.RELEASE_DIR }}
+          path: ./${{ env.RELEASE_DIR }}
