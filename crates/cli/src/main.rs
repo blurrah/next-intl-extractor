@@ -1,4 +1,5 @@
 use crate::file_map::{create_initial_map, FILENAME_REGEX, GLOBAL_FILE_MAP};
+use crate::files::find_files_with_git;
 use crate::watch::watch;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
@@ -65,7 +66,7 @@ fn main() -> Result<()> {
         output_path
     };
 
-    let files = find_files(&path, &FILENAME_REGEX);
+    let files = find_files(&path, &FILENAME_REGEX)?;
 
     let mut merged_data: Map<String, Value> = Map::new();
 
