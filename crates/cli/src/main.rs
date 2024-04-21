@@ -1,5 +1,4 @@
 use crate::file_map::{create_initial_map, FILENAME_REGEX, GLOBAL_FILE_MAP};
-use crate::files::find_files_with_git;
 use crate::watch::watch;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
