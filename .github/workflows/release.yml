@@ -23,7 +23,7 @@ jobs:
     runs-on: ${{ matrix.os}}
     strategy:
       matrix:
-        build: [linux, macos, windows]
+        build: [macos]
         include:
           # Starting with apple darwin first
           # - os: ubuntu-latest
