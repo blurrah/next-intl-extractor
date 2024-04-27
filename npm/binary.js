@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 const { Binary } = require("binary-install");
+const os = require("os");
+const path = require("path");
 
 const error = (msg) => {
   console.error(msg);
   process.exit(1);
 };
 
-const { version, name, repository } = require("./package.json");
+const { version, name, repository } = require("../package.json");
 
 const supportedPlatforms = [
   {
@@ -58,7 +60,7 @@ const getPlatformMetadata = () => {
 function getBinary() {
   const platformMetadata = getPlatformMetadata();
 
-  const url = `https://github.com/blurrah/i18n-label-merger/releases/download/${version}/${name}-${version}-${platformMetadata.RUST_TARGET}.tar.gz`;
+  const url = `https://github.com/blurrah/i18n-label-merger/releases/download/v${version}/${name}-v${version}-${platformMetadata.RUST_TARGET}.tar.gz`;
 
   return new Binary(platformMetadata.BINARY_NAME, url, version, {
     installDirectory: path.join(__dirname, "node_modules", ".bin"),

@@ -1,0 +1,16 @@
+{
+  "name": "basic-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "labels": "i18n-label-merger"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "i18n-label-merger": "file:../.."
+  }
+}
