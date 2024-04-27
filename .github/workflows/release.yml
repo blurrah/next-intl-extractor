@@ -1,4 +1,4 @@
-# Mostly taken from binary-install
+# Mostly taken from binary-install (https://github.com/EverlastingBugstopper/binary-install) thanks!
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - "rust_v*"
 
 env:
-  RELEASE_BIN: i18n_label_merger
+  RELEASE_BIN: i18n-label-merger
   RELEASE_DIR: artifacts
   WORKING_DIR: ./i18n-label-tools-binary
   GITHUB_REF: "${{ github.ref }}"
