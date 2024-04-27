@@ -78,6 +78,10 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      contents: read
+      packages: write
+      actions: write
     steps:
       - name: Query version number
         id: get_version
