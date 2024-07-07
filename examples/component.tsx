@@ -8,11 +8,12 @@ export function MyComponent() {
 
 export function SecondComponent() {
   const t = useTranslations("HelloFriends");
-  const t2 = useTranslations("GoodbyeFriends");
+  const t2 = useTranslations("GoodbyeFriends.Test");
 
   return (
     <p>
-      {t("goodbye")} {t("goodbye")} {t("hello")} {t("test")} {t2("hello")}
+      {t("goodbye")} {t("goodbye")} {t("hello")} {t("test")} {t2("hello")}{" "}
+      {t.rich("willthiswork")}
     </p>
   );
 }

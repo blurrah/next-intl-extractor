@@ -9,8 +9,7 @@ use oxc::{
     allocator::Allocator,
     ast::{
         ast::{
-            BindingPattern, BindingPatternKind, CallExpression, Class, Expression, Function,
-            FunctionType, TSImportAttributes, TSImportType,
+            BindingPattern, BindingPatternKind, CallExpression, ChainElement, ChainExpression, Class, Expression, Function, FunctionType, MemberExpression, TSImportAttributes, TSImportType
         },
         visit::walk,
         Visit,
@@ -114,6 +113,34 @@ impl<'a> Visit<'a> for TranslationFunctionVisitor {
     fn visit_variable_declaration(&mut self, it: &oxc::ast::ast::VariableDeclaration<'a>) {
         for decl in &it.declarations {
             if let Some(Expression::CallExpression(call_expr)) = &decl.init {
+                let (callee, arguments) = match &call_expr.callee {
+                    Expression::Identifier(ident) if ident.name == "useTranslations" => {
+                        (ident.name.to_string(), &call_expr.arguments)
+                    },
+                    Expression::ChainExpression(chain_expr) => {
+                        if let Some(MemberExpression::ComputedMemberExpression(member_expr)) = chain_expr.expression.as_member_expression() {
+                            if let Expression::Identifier(obj) = &member_expr.object {
+                                if obj.name == "useTranslations" {
+                                    if let Expression::Identifier(prop) = &member_expr.object {
+                                        (format!("useTranslations.{}", prop.name), &call_expr.arguments)
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    continue;
+                                }
+                            } else {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+                    },
+                    _ => continue,
+                };
+
+                println!("callee: {}, arguments: {arguments:?}", callee);
+
                 if let Expression::Identifier(ident) = &call_expr.callee {
                     if ident.name == "useTranslations" {
                         // First argument as string
@@ -151,7 +178,26 @@ impl<'a> Visit<'a> for TranslationFunctionVisitor {
             }
         }
     }
+
+    /// Visiting individual call expressions
+    /// In this case these are the used translation functions
     fn visit_call_expression(&mut self, node: &CallExpression) {
+        // Static member expression, e.g. `t.rich("key");`
+        if let Expression::StaticMemberExpression(member_expr) = &node.callee {
+            if let Expression::Identifier(callee) = &member_expr.object {
+                let scope = self.current_scope_name();
+                let key = format!("{}:{}", scope, callee.name);
+                if let Some(translation_info) = self.translation_functions.get_mut(&key) {
+                    if let Some(arg) = node.arguments.first() {
+                        if let Expression::StringLiteral(str_lit) = &arg.to_expression() {
+                            translation_info.usages.insert(str_lit.value.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Identifier, e.g. `t("key");`
         if let Expression::Identifier(callee) = &node.callee {
             let scope = self.current_scope_name();
             let key = format!("{}:{}", scope, callee.name);
