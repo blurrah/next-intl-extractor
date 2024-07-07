@@ -9,7 +9,9 @@ use oxc::{
     allocator::Allocator,
     ast::{
         ast::{
-            BindingPattern, BindingPatternKind, CallExpression, ChainElement, ChainExpression, Class, Expression, Function, FunctionType, MemberExpression, TSImportAttributes, TSImportType
+            BindingPattern, BindingPatternKind, CallExpression, ChainElement, ChainExpression,
+            Class, Expression, Function, FunctionType, MemberExpression, TSImportAttributes,
+            TSImportType,
         },
         visit::walk,
         Visit,
@@ -101,6 +103,7 @@ impl TranslationFunctionVisitor {
 }
 
 impl<'a> Visit<'a> for TranslationFunctionVisitor {
+    /// Visiting individual functions (mostly components) and set up a new function scope
     fn visit_function(&mut self, it: &Function<'a>, flags: Option<ScopeFlags>) {
         if let Some(ident) = &it.id {
             self.enter_scope(ident.name.as_str());
@@ -113,57 +116,56 @@ impl<'a> Visit<'a> for TranslationFunctionVisitor {
     fn visit_variable_declaration(&mut self, it: &oxc::ast::ast::VariableDeclaration<'a>) {
         for decl in &it.declarations {
             if let Some(Expression::CallExpression(call_expr)) = &decl.init {
-                let (callee, arguments) = match &call_expr.callee {
+                let callee_and_arguments = match &call_expr.callee {
                     Expression::Identifier(ident) if ident.name == "useTranslations" => {
-                        (ident.name.to_string(), &call_expr.arguments)
-                    },
+                        Some((ident.name.to_string(), &call_expr.arguments))
+                    }
                     Expression::ChainExpression(chain_expr) => {
-                        if let Some(MemberExpression::ComputedMemberExpression(member_expr)) = chain_expr.expression.as_member_expression() {
-                            if let Expression::Identifier(obj) = &member_expr.object {
-                                if obj.name == "useTranslations" {
-                                    if let Expression::Identifier(prop) = &member_expr.object {
-                                        (format!("useTranslations.{}", prop.name), &call_expr.arguments)
-                                    } else {
-                                        continue;
-                                    }
-                                } else {
-                                    continue;
+                        let chained_call = chain_expr.expression.as_member_expression().and_then(
+                            |expr| match expr {
+                                MemberExpression::ComputedMemberExpression(cme) => Some(cme),
+                                _ => None,
+                            },
+                        );
+
+                        if let Some(member_expr) = chained_call {
+                            match &member_expr.object {
+                                Expression::Identifier(obj) if obj.name == "useTranslations" => {
+                                    Some((
+                                        format!("useTranslations.{}", obj.name),
+                                        &call_expr.arguments,
+                                    ))
                                 }
-                            } else {
-                                continue;
+                                _ => None,
                             }
                         } else {
-                            continue;
+                            None
                         }
-                    },
-                    _ => continue,
+                    }
+                    _ => None,
                 };
 
-                println!("callee: {}, arguments: {arguments:?}", callee);
+                if let Some((callee, arguments)) = callee_and_arguments {
 
-                if let Expression::Identifier(ident) = &call_expr.callee {
-                    if ident.name == "useTranslations" {
-                        // First argument as string
-                        let namespace = if let Some(arg) = call_expr.arguments.first() {
-                            if let Expression::StringLiteral(str_lit) = arg.to_expression() {
-                                str_lit.value.to_string()
-                            } else {
-                                "default".to_string()
-                            }
+                    let namespace = if let Some(arg) = arguments.first() {
+                        if let Expression::StringLiteral(str_lit) = arg.to_expression() {
+                            str_lit.value.to_string()
                         } else {
                             "default".to_string()
+                        }
+                    } else {
+                        "default".to_string()
+                    };
+
+                    let decl_id =
+                        if let BindingPatternKind::BindingIdentifier(identer) = &decl.id.kind {
+                            identer.name.to_string()
+                        } else {
+                            // Shouldn't happen so let's just skip
+                            return;
                         };
 
-                        let decl_id =
-                            if let BindingPatternKind::BindingIdentifier(identer) = &decl.id.kind {
-                                identer.name.to_string()
-                            } else {
-                                // Shouldn't happen so let's just skip
-
-                                return;
-                            };
-
-                        let scope = self.current_scope_name();
+                    let scope = self.current_scope_name();
                         let key = format!("{}:{}", scope, decl_id);
 
                         self.translation_functions.insert(
@@ -173,18 +175,32 @@ impl<'a> Visit<'a> for TranslationFunctionVisitor {
                                 usages: HashSet::new(),
                             },
                         );
-                    }
                 }
             }
         }
     }
 
-    /// Visiting individual call expressions
-    /// In this case these are the used translation functions
+    /// Visiting individual translator functions
+    /// e.g. `t("key");` or `t.rich("key");`
     fn visit_call_expression(&mut self, node: &CallExpression) {
-        // Static member expression, e.g. `t.rich("key");`
-        if let Expression::StaticMemberExpression(member_expr) = &node.callee {
-            if let Expression::Identifier(callee) = &member_expr.object {
+        match &node.callee {
+            // Static member expression, e.g. `t.rich("key");`
+            Expression::StaticMemberExpression(member_expr) => {
+                if let Expression::Identifier(callee) = &member_expr.object {
+                    let scope = self.current_scope_name();
+
+                    let key = format!("{}:{}", scope, callee.name);
+                    if let Some(translation_info) = self.translation_functions.get_mut(&key) {
+                        if let Some(arg) = node.arguments.first() {
+                            if let Expression::StringLiteral(str_lit) = &arg.to_expression() {
+                                translation_info.usages.insert(str_lit.value.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+            // Identifier, e.g. `t("key");`
+            Expression::Identifier(callee) => {
                 let scope = self.current_scope_name();
                 let key = format!("{}:{}", scope, callee.name);
                 if let Some(translation_info) = self.translation_functions.get_mut(&key) {
@@ -195,19 +211,7 @@ impl<'a> Visit<'a> for TranslationFunctionVisitor {
                     }
                 }
             }
-        }
-
-        // Identifier, e.g. `t("key");`
-        if let Expression::Identifier(callee) = &node.callee {
-            let scope = self.current_scope_name();
-            let key = format!("{}:{}", scope, callee.name);
-            if let Some(translation_info) = self.translation_functions.get_mut(&key) {
-                if let Some(arg) = node.arguments.first() {
-                    if let Expression::StringLiteral(str_lit) = &arg.to_expression() {
-                        translation_info.usages.insert(str_lit.value.to_string());
-                    }
-                }
-            }
+            _ => (),
         }
     }
 }
