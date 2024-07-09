@@ -22,6 +22,7 @@ use oxc::{
 
 fn main() -> Result<()> {
     env_logger::init();
+    // TODO: Use proper argument parsing for input folders and output source.json file
     let name = env::args()
         .nth(1)
         .unwrap_or_else(|| "./examples/component.tsx".to_string());
@@ -43,6 +44,10 @@ fn main() -> Result<()> {
     println!("{translation_function_visitor:#?}");
     let merged = translation_function_visitor.merge_by_namespace();
     println!("{merged:#?}");
+
+    // TODO: Import existing translations json file and merge existing labels with input files
+
+    // TODO: Write merged translations to a json file
 
     println!("Done!");
 
@@ -201,7 +206,6 @@ impl<'a> Visit<'a> for TranslationFunctionVisitor {
         }
     }
 }
-
 
 fn extract_namespace_from_translations_call(call_expr: &CallExpression, is_get_translations: bool) -> Option<String> {
     if is_get_translations{
