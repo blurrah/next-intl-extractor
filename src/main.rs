@@ -10,7 +10,7 @@ use oxc::{
     allocator::Allocator,
     ast::{
         ast::{
-            Argument, BindingPattern, BindingPatternKind, CallExpression, ChainElement, ChainExpression, Class, Expression, Function, FunctionType, MemberExpression, ObjectExpression, ObjectPropertyKind, PropertyKey, PropertyKind, TSImportAttributes, TSImportType
+            Argument, BindingPatternKind, CallExpression, Expression, Function, ObjectPropertyKind, PropertyKey
         },
         visit::walk,
         Visit,
