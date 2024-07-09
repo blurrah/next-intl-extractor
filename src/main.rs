@@ -5,13 +5,12 @@ use std::{
 };
 
 use anyhow::Result;
+use log::warn;
 use oxc::{
     allocator::Allocator,
     ast::{
         ast::{
-            BindingPattern, BindingPatternKind, CallExpression, ChainElement, ChainExpression,
-            Class, Expression, Function, FunctionType, MemberExpression, TSImportAttributes,
-            TSImportType,
+            Argument, BindingPattern, BindingPatternKind, CallExpression, ChainElement, ChainExpression, Class, Expression, Function, FunctionType, MemberExpression, ObjectExpression, ObjectPropertyKind, PropertyKey, PropertyKind, TSImportAttributes, TSImportType
         },
         visit::walk,
         Visit,
@@ -22,6 +21,7 @@ use oxc::{
 };
 
 fn main() -> Result<()> {
+    env_logger::init();
     let name = env::args()
         .nth(1)
         .unwrap_or_else(|| "./examples/component.tsx".to_string());
@@ -115,68 +115,54 @@ impl<'a> Visit<'a> for TranslationFunctionVisitor {
 
     fn visit_variable_declaration(&mut self, it: &oxc::ast::ast::VariableDeclaration<'a>) {
         for decl in &it.declarations {
-            if let Some(Expression::CallExpression(call_expr)) = &decl.init {
-                let callee_and_arguments = match &call_expr.callee {
-                    Expression::Identifier(ident) if ident.name == "useTranslations" => {
-                        Some((ident.name.to_string(), &call_expr.arguments))
-                    }
-                    Expression::ChainExpression(chain_expr) => {
-                        let chained_call = chain_expr.expression.as_member_expression().and_then(
-                            |expr| match expr {
-                                MemberExpression::ComputedMemberExpression(cme) => Some(cme),
-                                _ => None,
-                            },
-                        );
-
-                        if let Some(member_expr) = chained_call {
-                            match &member_expr.object {
-                                Expression::Identifier(obj) if obj.name == "useTranslations" => {
-                                    Some((
-                                        format!("useTranslations.{}", obj.name),
-                                        &call_expr.arguments,
-                                    ))
-                                }
-                                _ => None,
-                            }
-                        } else {
-                            None
-                        }
-                    }
-                    _ => None,
-                };
-
-                if let Some((callee, arguments)) = callee_and_arguments {
-
-                    let namespace = if let Some(arg) = arguments.first() {
-                        if let Expression::StringLiteral(str_lit) = arg.to_expression() {
-                            str_lit.value.to_string()
-                        } else {
-                            "default".to_string()
-                        }
+            let (call_expr, is_get_translations) = match &decl.init {
+                Some(Expression::CallExpression(call_expr)) => (call_expr, false),
+                Some(Expression::AwaitExpression(await_expr)) => {
+                    if let Expression::CallExpression(call_expr) = &await_expr.argument {
+                    (call_expr, true)
                     } else {
-                        "default".to_string()
-                    };
-
-                    let decl_id =
-                        if let BindingPatternKind::BindingIdentifier(identer) = &decl.id.kind {
-                            identer.name.to_string()
-                        } else {
-                            // Shouldn't happen so let's just skip
-                            return;
-                        };
-
-                    let scope = self.current_scope_name();
-                        let key = format!("{}:{}", scope, decl_id);
-
-                        self.translation_functions.insert(
-                            key,
-                            TranslationFunction {
-                                namespace,
-                                usages: HashSet::new(),
-                            },
-                        );
+                        continue;
+                    }
                 }
+                // Not a call expression, skip the declaration
+                _ => continue,
+            };
+
+            let (callee_name, callee_span) = match &call_expr.callee {
+                Expression::Identifier(ident) => (ident.name.to_string(), ident.span),
+                _ => continue,
+            };
+
+            // Early return if the callee is not a useTranslations/getTranslations function function
+            if callee_name != "useTranslations" && callee_name != "getTranslations" {
+                continue;
             }
+
+            let namespace = match extract_namespace_from_translations_call(call_expr, is_get_translations) {
+                Some(namespace) => namespace,
+                None => {
+                    // TODO: Calculate line and column from span
+                    warn!("Could not find namespace for translations call at {:?}", callee_span);
+                    continue
+                },
+            };
+
+
+            let decl_id = match &decl.id.kind {
+                BindingPatternKind::BindingIdentifier(identer) => identer.name.to_string(),
+                _ => continue,
+            };
+
+            let scope = self.current_scope_name();
+            let key = format!("{}:{}", scope, decl_id);
+
+            self.translation_functions.insert(
+                key,
+                TranslationFunction {
+                    namespace,
+                    usages: HashSet::new(),
+                },
+            );
         }
     }
 
@@ -213,5 +199,40 @@ impl<'a> Visit<'a> for TranslationFunctionVisitor {
             }
             _ => (),
         }
+    }
+}
+
+
+fn extract_namespace_from_translations_call(call_expr: &CallExpression, is_get_translations: bool) -> Option<String> {
+    if is_get_translations{
+        // For getTranslations, expect an object with a namespace property
+        call_expr.arguments.first()
+            .and_then(|arg| {
+                if let Argument::ObjectExpression(obj) = arg {
+                    obj.properties.iter().find_map(|prop| {
+                        if let ObjectPropertyKind::ObjectProperty(prop) = prop {
+                            match (&prop.key, &prop.value) {
+                                (PropertyKey::StaticIdentifier(key_ident), Expression::StringLiteral(value_lit))
+                                    if key_ident.name == "namespace" => Some(value_lit.value.to_string()),
+                                _ => None,
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    None
+                }
+            })
+    } else {
+        // For useTranslations, expect a string literal as the first argument
+        call_expr.arguments.first()
+            .and_then(|arg| {
+                if let Argument::StringLiteral(str_lit) = arg {
+                    Some(str_lit.value.to_string())
+                } else {
+                    None
+                }
+            })
     }
 }

@@ -1,4 +1,5 @@
 import { useTranslations } from "next-intl/client";
+import { getTranslations } from "next-intl/server";
 
 export function MyComponent() {
   const t = useTranslations("HelloFriends");
@@ -16,4 +17,10 @@ export function SecondComponent() {
       {t.rich("willthiswork")}
     </p>
   );
+}
+
+export async function ServerComponent() {
+  const t = await getTranslations({ namespace: "HelloFriends.Async" });
+
+  return <p>{t("test")}</p>;
 }
