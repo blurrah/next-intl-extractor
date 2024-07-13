@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+pub mod visitor;
+
 pub fn find_typescript_files(path: &PathBuf, regex: &str) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
     todo!("Implement finding files")
 }
