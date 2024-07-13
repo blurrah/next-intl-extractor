@@ -1,4 +1,3 @@
-use std::collections::{HashMap, HashSet};
 use log::warn;
 use oxc::{
     ast::{
@@ -11,6 +10,7 @@ use oxc::{
     },
     syntax::scope::ScopeFlags,
 };
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug)]
 struct TranslationFunction {

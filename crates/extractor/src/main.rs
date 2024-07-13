@@ -1,17 +1,7 @@
-use std::{
-    env,
-    path::Path,
-};
+use std::{env, path::Path};
 
 use anyhow::Result;
-use oxc::{
-    allocator::Allocator,
-    ast::
-        Visit
-    ,
-    parser::Parser,
-    span::SourceType,
-};
+use oxc::{allocator::Allocator, ast::Visit, parser::Parser, span::SourceType};
 
 use crate::visitor::TranslationFunctionVisitor;
 
@@ -50,4 +40,3 @@ fn main() -> Result<()> {
 
     Ok(())
 }
-
