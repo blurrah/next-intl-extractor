@@ -65,6 +65,12 @@ impl TranslationFunctionVisitor {
     }
 }
 
+impl Default for TranslationFunctionVisitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a> Visit<'a> for TranslationFunctionVisitor {
     /// Visiting individual functions (mostly components) and set up a new function scope
     fn visit_function(&mut self, it: &Function<'a>, flags: Option<ScopeFlags>) {

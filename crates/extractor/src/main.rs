@@ -7,6 +7,7 @@ use crate::visitor::TranslationFunctionVisitor;
 
 mod visitor;
 
+// TODO: Temp CLI tool, move to `cli` crate
 fn main() -> Result<()> {
     env_logger::init();
     // TODO: Use proper argument parsing for input folders and output source.json file

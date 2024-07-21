@@ -1,20 +1,25 @@
-# i18n-label-merger
+# next-intl-cli-tools
 
-Simple CLI utility that collects i18n label files (denoted as `<Identifier>.labels.json`) and merges them to a single JSON object for translation services like Transifex.
+> [!CAUTION]
+> This is work in progress and does not properly work yet
+> This is also a learning project until I get more acquainted with the Rust ecosystem
+
+Few simple CLI tools to help with `next-intl` project.
 
 ## Why?
 
-Could have done this just as easily in a TypeScript project, as it's a simple and non-heavy task. But doing it in Rust to get more acquainted with it and the ecosystem around CLI applications, file system operations and (de)serialization of JSON.
+Partly because I could really use these tools but mostly to get acquainted with the Rust ecosystem for creating development tooling within the JS ecosystem.
 
-So naturally the codebase is quite a mess with mixed concepts, will be better as I keep improving it.
+So naturally the codebase is quite a mess with mixed concepts, will become better as I keep improving on it.
 
 ## What should it do once ready?
 
-- Take all labels.json files and create one single output json
-    - Allow passing working directory and output filename
+- Read your component files for `useTranslation` and `getTranslation` usage and extract those labels into a source.json automatically.
+- Take the existing source.json labels and use them when available
+- Optional: Automatically translate into configured destination languages
 - Watch mode with incremental JSON updates
     - Debounce updates when for example git operations are being done
 - Warn when invalid values are used (Only `String(String)` and `Object(Map<String, RecursiveReference>)` should be allowed)
     - Show where the invalid value is being used in the source file
 - Available on NPM as bin
-    - With binary-install for now, possibly napi-rs or wasm-pack
+    - With binary-install for now, possibly napi-rs or wasm-pack for js api
