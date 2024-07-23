@@ -1,48 +1,34 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use anyhow::{Error, anyhow};
+use anyhow::{anyhow, Error};
 use clap::{arg, command, Parser};
 use next_intl_extractor::visitor::TranslationFunctionVisitor;
-use tracing::{info, error, span, Level};
+use tracing::{error, info, span, Level};
 use tracing_subscriber::FmtSubscriber;
+use crate::messages::MessageHandler;
+use crate::files::find_files;
 
-fn main() -> ExitCode {
-    // Initialize tracing
-    tracing_subscriber::fmt().init();
-
-    let root_span = span!(Level::INFO, "cli_execution");
-    let _enter = root_span.enter();
-
-    info!("Starting CLI execution");
-
-    match run() {
-        Ok(_) => {
-            info!("CLI execution completed successfully");
-            ExitCode::SUCCESS
-        }
-        Err(e) => {
-            error!("Error during CLI execution: {}", e);
-            ExitCode::FAILURE
-        }
-    }
-}
+pub mod messages;
+pub mod files;
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
+#[command(name = "next-intl-extractor")]
+#[command(version = "0.1.0")]
+#[command(about = "Extracts next-intl messages")]
+#[command(long_about = None)]
+struct CliArguments {
     /// Watch for file changes and merge them automatically
     #[arg(short, long, default_value = "false")]
     watch: bool,
 
     /// Output file
     #[clap(long, short, value_parser = clap::value_parser!(PathBuf))]
-    output: PathBuf,
+    output_path: PathBuf,
 
     /// Pattern for components to find
-    #[arg(short, long, value_parser = clap::value_parser!(PathBuf), default_value = "**/*.{tsx,ts}")]
-    pattern: PathBuf
+    #[arg(short, long, default_value = "**/*.{tsx,ts}")]
+    pattern: String,
 }
-
 
 fn run() -> Result<(), Error> {
     let run_span = span!(Level::INFO, "run");
@@ -51,18 +37,75 @@ fn run() -> Result<(), Error> {
     info!("Starting run function");
 
     // Parse arguments
-    let args = Args::parse();
+    let args = CliArguments::parse();
     info!("Arguments parsed: {:?}", args);
 
     // Check that output file is a .json file
-    if args.output.extension().unwrap_or_default() != "json" {
+    if args.output_path.extension().unwrap_or_default() != "json" {
         error!("Invalid output file extension");
         return Err(anyhow!("Output file must be a .json file"));
     }
 
-    // TODO: Add your main logic here
-    info!("Main logic execution would go here");
+    if args.watch {
+        info!("Watching for file changes");
+    }
+
+    // Initialize message handler
+    let message_handler = MessageHandler::new(&args.output_path)?;
+
+     // Find files matching the glob pattern
+     let files = find_files(&args.pattern)?;
+     info!("Found {} files matching the pattern", files.len());
+
+     let visitor = TranslationFunctionVisitor::new();
+     // Process each file
+     for file in files {
+         info!("Processing file: {:?}", file);
+         let messages = visitor.visit_program(&file)?;
+         message_handler.add_messages(file, messages)?;
+     }
+
+    // After processing all files:
+    let merged_messages = message_handler.merge_messages();
+
+
+    // Write merged_messages to the output file
+    message_handler.write_merged_messages(merged_messages, &args.output_path)?;
 
     info!("Run function completed successfully");
     Ok(())
+}
+
+fn main() -> ExitCode {
+    // Initialize tracing
+    let subscriber = tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("Failed to set global default subscriber");
+
+    let root_span = span!(Level::INFO, "cli_execution");
+    let _enter = root_span.enter();
+
+    info!("Starting CLI execution");
+
+    // Run the actual application
+    match run() {
+        Ok(_) => {
+            info!("CLI execution completed successfully");
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            // In release mode, print the error to stderr
+            #[cfg(not(debug_assertions))]
+            eprintln!("Error: {}", e);
+
+            // In debug mode, use tracing to log the error
+            #[cfg(debug_assertions)]
+            error!("Error during CLI execution: {}", e);
+
+            ExitCode::FAILURE
+        }
+    }
 }
