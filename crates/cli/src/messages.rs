@@ -4,9 +4,20 @@ use std::path::Path;
 use anyhow::{Result, Context};
 use serde_json::{Value, Map};
 
+#[derive(Default)]
+pub struct MessageMap {
+    messages: HashMap<String, Either<String, Box<MessageMap>>>,
+}
+
+pub enum Either<L, R> {
+    Left(L),
+    Right(R),
+}
+
+
 pub struct MessageHandler {
     source_messages: Map<String, Value>,
-    extracted_messages: HashMap<String, HashMap<String, String>>,
+    extracted_messages: MessageMap,
 }
 
 impl MessageHandler {
@@ -14,67 +25,85 @@ impl MessageHandler {
         let source_messages = load_source_messages(source_path)?;
         Ok(Self {
             source_messages,
-            extracted_messages: HashMap::new(),
+            extracted_messages: MessageMap::default(),
         })
     }
 
+    /// Add a new message to the extracted messages
     pub fn add_extracted_message(&mut self, namespace: String, key: String) {
         let parts: Vec<&str> = namespace.split('.').collect();
-        let mut current = &mut self.extracted_messages;
+        let mut current = &mut self.extracted_messages.messages;
 
-        for (i, &part) in parts.iter().enumerate() {
-            current = current
-                .entry(part.to_string())
-                .or_insert_with(HashMap::new);
-
-            if i == parts.len() - 1 {
-                current.insert(key.clone(), Value::Null);
-            }
+        // Navigate through all but the last part
+        for &part in parts.iter() {
+            current = match current.entry(part.to_string()).or_insert_with(|| {
+                Either::Right(Box::new(MessageMap::default()))
+            }) {
+                Either::Right(map) => &mut map.messages,
+                Either::Left(_) => unreachable!("Should never have a string value while traversing"),
+            };
         }
+
+        // Insert the final key as a Left value
+        current.insert(key, Either::Left(String::new()));
     }
 
-    pub fn add_messages(&mut self, messages: HashMap<String, HashSet<String>>) -> Result<()> {
+    /// Add a set of extracted messages to the extracted messages
+    pub fn add_extracted_messages(&mut self, messages: HashMap<String, HashSet<String>>) {
         for (namespace, keys) in messages {
             for key in keys {
                 self.add_extracted_message(namespace.clone(), key);
             }
         }
-        Ok(())
     }
 
     pub fn merge_messages(&self) -> Map<String, Value> {
-        // Start with an empty map for the merged messages
         let mut merged = Map::new();
+        self.merge_recursive(&self.extracted_messages, &mut merged, None);
+        merged
+    }
 
-        // Iterate through all namespaces and messages in extracted_messages
-        for (namespace, messages) in &self.extracted_messages {
-            // Create a new object for this namespace
-            let mut namespace_obj = Map::new();
-
-            // Check if this namespace exists in the source messages
-            if let Some(Value::Object(source_namespace)) = self.source_messages.get(namespace) {
-                // Iterate through all keys in the extracted messages for this namespace
-                for key in messages.keys() {
-                    if let Some(value) = source_namespace.get(key) {
-                        // If the key exists in source, use its value
-                        namespace_obj.insert(key.clone(), value.clone());
+    fn merge_recursive(&self, message_map: &MessageMap, output: &mut Map<String, Value>, prefix: Option<&str>) {
+        for (key, value) in &message_map.messages {
+            match value {
+                Either::Left(_) => {
+                    let full_key = if let Some(p) = prefix {
+                        format!("{}.{}", p, key)
                     } else {
-                        // If the key doesn't exist in source, create a placeholder
-                        namespace_obj.insert(key.clone(), Value::String(format!("{}.{}", namespace, key)));
+                        key.clone()
+                    };
+
+                    // Look up in source messages
+                    if let Some(source_value) = self.lookup_in_source(&full_key, key) {
+                        output.insert(key.clone(), source_value);
+                    } else {
+                        output.insert(key.clone(), Value::String(full_key));
                     }
                 }
-            } else {
-                // If the namespace doesn't exist in source, create placeholders for all keys
-                for key in messages.keys() {
-                    namespace_obj.insert(key.clone(), Value::String(format!("{}.{}", namespace, key)));
+                Either::Right(nested) => {
+                    let mut nested_map = Map::new();
+                    self.merge_recursive(nested, &mut nested_map, Some(key));
+                    output.insert(key.clone(), Value::Object(nested_map));
                 }
             }
-
-            // Add the namespace object to the merged map
-            merged.insert(namespace.clone(), Value::Object(namespace_obj));
         }
+    }
 
-        merged
+    fn lookup_in_source(&self, full_key: &str, key: &str) -> Option<Value> {
+        let parts: Vec<&str> = full_key.split('.').collect();
+        let mut current = &self.source_messages;
+
+        for (i, &part) in parts.iter().enumerate() {
+            if i == parts.len() - 1 {
+                return current.get(key).cloned();
+            }
+
+            current = match current.get(part)?.as_object() {
+                Some(obj) => obj,
+                None => return None,
+            };
+        }
+        None
     }
 
     pub fn write_merged_messages(&self, messages: Map<String, Value>, output_path: &Path) -> Result<()> {
@@ -116,7 +145,7 @@ mod tests {
 
         MessageHandler {
             source_messages: source_messages.as_object().unwrap().clone(),
-            extracted_messages: HashMap::new(),
+            extracted_messages: MessageMap::default(),
         }
     }
 

@@ -59,7 +59,7 @@ fn run() -> Result<(), Error> {
         info!("Processing file: {:?}", file);
         let file_path = Path::new(&file);
         let messages = next_intl_extractor::extract_translations(file_path)?;
-        message_handler.add_messages(messages)?;
+        message_handler.add_extracted_messages(messages);
      }
 
     // After processing all files:
