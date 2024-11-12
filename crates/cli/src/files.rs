@@ -1,5 +1,5 @@
-use glob::glob;
 use anyhow::Result;
+use glob::glob;
 
 pub fn find_files(glob_pattern: &str) -> Result<Vec<String>> {
     let mut files = Vec::new();
@@ -14,4 +14,3 @@ pub fn find_files(glob_pattern: &str) -> Result<Vec<String>> {
 
     Ok(files)
 }
-

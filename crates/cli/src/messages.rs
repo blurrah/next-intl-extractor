@@ -1,8 +1,8 @@
+use anyhow::{Context, Result};
+use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
-use anyhow::{Result, Context};
-use serde_json::{Value, Map};
 
 #[derive(Default)]
 pub struct MessageMap {
@@ -13,7 +13,6 @@ pub enum Either<L, R> {
     Left(L),
     Right(R),
 }
-
 
 pub struct MessageHandler {
     source_messages: Map<String, Value>,
@@ -36,11 +35,14 @@ impl MessageHandler {
 
         // Navigate through all but the last part
         for &part in parts.iter() {
-            current = match current.entry(part.to_string()).or_insert_with(|| {
-                Either::Right(Box::new(MessageMap::default()))
-            }) {
+            current = match current
+                .entry(part.to_string())
+                .or_insert_with(|| Either::Right(Box::new(MessageMap::default())))
+            {
                 Either::Right(map) => &mut map.messages,
-                Either::Left(_) => unreachable!("Should never have a string value while traversing"),
+                Either::Left(_) => {
+                    unreachable!("Should never have a string value while traversing")
+                }
             };
         }
 
@@ -63,7 +65,12 @@ impl MessageHandler {
         merged
     }
 
-    fn merge_recursive(&self, message_map: &MessageMap, output: &mut Map<String, Value>, prefix: Option<&str>) {
+    fn merge_recursive(
+        &self,
+        message_map: &MessageMap,
+        output: &mut Map<String, Value>,
+        prefix: Option<&str>,
+    ) {
         for (key, value) in &message_map.messages {
             match value {
                 Either::Left(_) => {
@@ -106,7 +113,11 @@ impl MessageHandler {
         None
     }
 
-    pub fn write_merged_messages(&self, messages: Map<String, Value>, output_path: &Path) -> Result<()> {
+    pub fn write_merged_messages(
+        &self,
+        messages: Map<String, Value>,
+        output_path: &Path,
+    ) -> Result<()> {
         let json = serde_json::to_string_pretty(&messages)?;
         fs::write(output_path, json)?;
         Ok(())
@@ -190,7 +201,10 @@ mod tests {
         assert_eq!(merged.len(), 1);
         let new_namespace = merged.get("new_namespace").unwrap().as_object().unwrap();
         assert_eq!(new_namespace.len(), 1);
-        assert_eq!(new_namespace.get("new_key").unwrap(), "new_namespace.new_key");
+        assert_eq!(
+            new_namespace.get("new_key").unwrap(),
+            "new_namespace.new_key"
+        );
     }
 
     #[test]

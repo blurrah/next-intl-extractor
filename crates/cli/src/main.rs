@@ -1,16 +1,16 @@
 use std::path::Path;
 use std::{path::PathBuf, process::ExitCode};
 
+use crate::files::find_files;
+use crate::messages::MessageHandler;
 use anyhow::{anyhow, Error};
 use clap::{arg, command, Parser};
 use next_intl_extractor::visitor::TranslationFunctionVisitor;
 use tracing::{error, info, span, Level};
 use tracing_subscriber::FmtSubscriber;
-use crate::messages::MessageHandler;
-use crate::files::find_files;
 
-pub mod messages;
 pub mod files;
+pub mod messages;
 
 #[derive(Parser, Debug)]
 #[command(name = "next-intl-extractor")]
@@ -50,21 +50,20 @@ fn run() -> Result<(), Error> {
     // Initialize message handler
     let mut message_handler = MessageHandler::new(&args.output_path)?;
 
-     // Find files matching the glob pattern
-     let files = find_files(&args.pattern)?;
-     info!("Found {} files matching the pattern", files.len());
+    // Find files matching the glob pattern
+    let files = find_files(&args.pattern)?;
+    info!("Found {} files matching the pattern", files.len());
 
-     // Process each file
-     for file in files {
+    // Process each file
+    for file in files {
         info!("Processing file: {:?}", file);
         let file_path = Path::new(&file);
         let messages = next_intl_extractor::extract_translations(file_path)?;
         message_handler.add_extracted_messages(messages);
-     }
+    }
 
     // After processing all files:
     let merged_messages = message_handler.merge_messages();
-
 
     // Write merged_messages to the output file
     message_handler.write_merged_messages(merged_messages, &args.output_path)?;

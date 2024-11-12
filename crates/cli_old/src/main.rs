@@ -108,7 +108,6 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-
 /**
  * Actual function that's being ran when using the CLI
  */
