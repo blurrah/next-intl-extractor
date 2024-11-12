@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use anyhow::{Result, Context};
@@ -19,11 +19,27 @@ impl MessageHandler {
     }
 
     pub fn add_extracted_message(&mut self, namespace: String, key: String) {
-        self.extracted_messages
-            .entry(namespace)
-            .or_default()
-            .entry(key)
-            .or_default();
+        let parts: Vec<&str> = namespace.split('.').collect();
+        let mut current = &mut self.extracted_messages;
+
+        for (i, &part) in parts.iter().enumerate() {
+            current = current
+                .entry(part.to_string())
+                .or_insert_with(HashMap::new);
+
+            if i == parts.len() - 1 {
+                current.insert(key.clone(), Value::Null);
+            }
+        }
+    }
+
+    pub fn add_messages(&mut self, messages: HashMap<String, HashSet<String>>) -> Result<()> {
+        for (namespace, keys) in messages {
+            for key in keys {
+                self.add_extracted_message(namespace.clone(), key);
+            }
+        }
+        Ok(())
     }
 
     pub fn merge_messages(&self) -> Map<String, Value> {

@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::{path::PathBuf, process::ExitCode};
 
 use anyhow::{anyhow, Error};
@@ -46,23 +47,19 @@ fn run() -> Result<(), Error> {
         return Err(anyhow!("Output file must be a .json file"));
     }
 
-    if args.watch {
-        info!("Watching for file changes");
-    }
-
     // Initialize message handler
-    let message_handler = MessageHandler::new(&args.output_path)?;
+    let mut message_handler = MessageHandler::new(&args.output_path)?;
 
      // Find files matching the glob pattern
      let files = find_files(&args.pattern)?;
      info!("Found {} files matching the pattern", files.len());
 
-     let visitor = TranslationFunctionVisitor::new();
      // Process each file
      for file in files {
-         info!("Processing file: {:?}", file);
-         let messages = visitor.visit_program(&file)?;
-         message_handler.add_messages(file, messages)?;
+        info!("Processing file: {:?}", file);
+        let file_path = Path::new(&file);
+        let messages = next_intl_extractor::extract_translations(file_path)?;
+        message_handler.add_messages(messages)?;
      }
 
     // After processing all files:
@@ -71,6 +68,10 @@ fn run() -> Result<(), Error> {
 
     // Write merged_messages to the output file
     message_handler.write_merged_messages(merged_messages, &args.output_path)?;
+
+    if args.watch {
+        info!("Watching for file changes");
+    }
 
     info!("Run function completed successfully");
     Ok(())

@@ -1,12 +1,14 @@
 {
+  "GoodbyeFriends.Test": {
+    "hello": "GoodbyeFriends.Test.hello"
+  },
   "HelloFriends": {
-    "hello": "Hello",
     "goodbye": "Goodbye",
+    "hello": "Hello",
     "test": "Test",
-    "willthiswork": "Willthiswork",
-    "Async": {
-      "test": "Test",
-      "test2": "Test2"
-    }
+    "willthiswork": "Willthiswork"
+  },
+  "HelloFriends.Async": {
+    "test": "HelloFriends.Async.test"
   }
 }
