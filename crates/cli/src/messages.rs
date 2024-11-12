@@ -37,7 +37,7 @@ impl MessageHandler {
         for &part in parts.iter() {
             current = match current
                 .entry(part.to_string())
-                .or_insert_with(|| Either::Right(Box::new(MessageMap::default())))
+                .or_insert_with(|| Either::Right(Box::default()))
             {
                 Either::Right(map) => &mut map.messages,
                 Either::Left(_) => {
