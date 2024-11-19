@@ -1,12 +1,12 @@
 [package]
-name = "next-intl-extractor-cli"
+name = "next-intl-resolver-cli"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-next-intl-extractor = { path = "../extractor" }
+next-intl-resolver = { path = "../resolver" }
 anyhow = "1.0.86"
 clap = { version = "4.5.10", features = ["derive"] }
 glob = "0.3.1"

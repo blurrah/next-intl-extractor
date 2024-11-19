@@ -5,7 +5,8 @@ use crate::files::find_files;
 use crate::messages::MessageHandler;
 use anyhow::{anyhow, Error};
 use clap::{arg, command, Parser};
-use next_intl_extractor::visitor::TranslationFunctionVisitor;
+use next_intl_resolver::extract_translations;
+use next_intl_resolver::visitor::TranslationFunctionVisitor;
 use tracing::{error, info, span, Level};
 use tracing_subscriber::FmtSubscriber;
 
@@ -13,7 +14,7 @@ pub mod files;
 pub mod messages;
 
 #[derive(Parser, Debug)]
-#[command(name = "next-intl-extractor")]
+#[command(name = "next-intl-resolver")]
 #[command(version = "0.1.0")]
 #[command(about = "Extracts next-intl messages")]
 #[command(long_about = None)]
@@ -50,29 +51,43 @@ fn run() -> Result<(), Error> {
     // Initialize message handler
     let mut message_handler = MessageHandler::new(&args.output_path)?;
 
-    // Find files matching the glob pattern
+    // Find and process files
     let files = find_files(&args.pattern)?;
-    info!("Found {} files matching the pattern", files.len());
 
-    // Process each file
     for file in files {
-        info!("Processing file: {:?}", file);
-        let file_path = Path::new(&file);
-        let messages = next_intl_extractor::extract_translations(file_path)?;
-        message_handler.add_extracted_messages(messages);
+        let translations = extract_translations(&file);
+
+        if let Ok(translations) = translations {
+            for (namespace, keys) in translations.iter() {
+
+                for key in keys {
+                    message_handler.add_extracted_message(namespace.clone(), key.to_string(), file.to_string_lossy().into_owned());
+                }
+            }
+        }
     }
 
-    // After processing all files:
-    let merged_messages = message_handler.merge_messages();
-
-    // Write merged_messages to the output file
-    message_handler.write_merged_messages(merged_messages, &args.output_path)?;
-
-    if args.watch {
-        info!("Watching for file changes");
+    // Check for conflicts before proceeding
+    let conflicts = message_handler.get_conflicts();
+    if !conflicts.is_empty() {
+        error!("Found namespace conflicts:");
+        for conflict in conflicts {
+            error!(
+                "Namespace '{}' key '{}' is used in multiple files:",
+                conflict.namespace, conflict.key
+            );
+            for file in &conflict.files {
+                error!("  - {}", file);
+            }
+        }
+        return Err(anyhow!("Namespace conflicts detected. Please resolve conflicts before proceeding."));
     }
 
-    info!("Run function completed successfully");
+    // If no conflicts, proceed with merging
+    let merged = message_handler.merge_messages();
+    message_handler.write_merged_messages(merged, &args.output_path)?;
+
+    info!("Successfully merged messages");
     Ok(())
 }
 
