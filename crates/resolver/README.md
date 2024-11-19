@@ -1,4 +1,4 @@
-# next-intl-extractor
+# next-intl-resolver
 
 > [!CAUTION]
 > This is work in progress and does not extract anything yet.

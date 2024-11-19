@@ -453,7 +453,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "next-intl-extractor"
+name = "next-intl-resolver"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -463,13 +463,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "next-intl-extractor-cli"
+name = "next-intl-resolver-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
  "glob",
- "next-intl-extractor",
+ "next-intl-resolver",
  "serde_json",
  "tracing",
  "tracing-subscriber",

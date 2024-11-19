@@ -210,3 +210,63 @@ fn extract_namespace_from_translations_call(
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use oxc::allocator::Allocator;
+    use oxc::ast::ast::{CallExpression, Expression, ObjectExpression, StringLiteral};
+    use oxc::span::Span;
+
+    #[test]
+    fn test_new_visitor() {
+        let visitor = TranslationFunctionVisitor::new();
+        assert!(visitor.translation_functions.is_empty());
+        assert!(visitor.current_scope.is_empty());
+    }
+
+    #[test]
+    fn test_scope_management() {
+        let mut visitor = TranslationFunctionVisitor::new();
+        visitor.enter_scope("Component");
+        visitor.enter_scope("SubComponent");
+        assert_eq!(visitor.current_scope_name(), "Component.SubComponent");
+        visitor.exit_scope();
+        assert_eq!(visitor.current_scope_name(), "Component");
+    }
+
+    /// Test that merge_by_namespace correctly merges translation functions from the same namespace.
+    ///
+    /// We add two translation functions with the same namespace and then merge them. The resulting
+    /// hashmap should have one entry with the namespace as key and a set of all usages as value.
+    ///
+    /// We test that the resulting hashmap contains the expected number of namespaces and that the
+    /// set of usages contains all the expected keys.
+    #[test]
+    fn test_merge_by_namespace() {
+        let mut visitor = TranslationFunctionVisitor::new();
+
+        // Add some test translation functions
+        visitor.translation_functions.insert(
+            "comp1".to_string(),
+            TranslationFunction {
+                namespace: "ns1".to_string(),
+                usages: ["key1".to_string(), "key2".to_string()].into_iter().collect(),
+            },
+        );
+        visitor.translation_functions.insert(
+            "comp2".to_string(),
+            TranslationFunction {
+                namespace: "ns1".to_string(),
+                usages: ["key2".to_string(), "key3".to_string()].into_iter().collect(),
+            },
+        );
+
+        let merged = visitor.merge_by_namespace();
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged["ns1"].len(), 3);
+        assert!(merged["ns1"].contains("key1"));
+        assert!(merged["ns1"].contains("key2"));
+        assert!(merged["ns1"].contains("key3"));
+    }
+}
