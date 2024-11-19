@@ -111,7 +111,7 @@ impl MessageHandler {
     ) {
         for (key, value) in &message_map.messages {
             match value {
-                Either::Left(info) => {
+                Either::Left(_info) => {
                     let full_key = if let Some(p) = prefix {
                         format!("{}.{}", p, key)
                     } else {

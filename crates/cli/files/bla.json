@@ -1,0 +1,16 @@
+{
+  "GoodbyeFriends": {
+    "Test": {
+      "hello": "Test.hello"
+    }
+  },
+  "HelloFriends": {
+    "Async": {
+      "test": "Async.test"
+    },
+    "goodbye": "HelloFriends.goodbye",
+    "hello": "HelloFriends.hello",
+    "test": "HelloFriends.test",
+    "willthiswork": "HelloFriends.willthiswork"
+  }
+}

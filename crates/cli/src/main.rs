@@ -48,20 +48,41 @@ fn run() -> Result<(), Error> {
         return Err(anyhow!("Output file must be a .json file"));
     }
 
+    // Check if output file exists, if not create it
+    if !args.output_path.exists() {
+        let parent = args
+            .output_path
+            .parent()
+            .ok_or_else(|| anyhow!("Invalid output path"))?;
+        std::fs::create_dir_all(parent)?;
+        std::fs::write(&args.output_path, "{}")?;
+        info!(
+            "Output file does not exist yet. Created: {:?}",
+            args.output_path
+        );
+    }
+
     // Initialize message handler
     let mut message_handler = MessageHandler::new(&args.output_path)?;
 
     // Find and process files
     let files = find_files(&args.pattern)?;
 
+    if files.is_empty() {
+        return Err(anyhow!("No files found for pattern: {}", args.pattern));
+    }
+
     for file in files {
         let translations = extract_translations(&file);
 
         if let Ok(translations) = translations {
             for (namespace, keys) in translations.iter() {
-
                 for key in keys {
-                    message_handler.add_extracted_message(namespace.clone(), key.to_string(), file.to_string_lossy().into_owned());
+                    message_handler.add_extracted_message(
+                        namespace.clone(),
+                        key.to_string(),
+                        file.to_string_lossy().into_owned(),
+                    );
                 }
             }
         }
@@ -80,7 +101,9 @@ fn run() -> Result<(), Error> {
                 error!("  - {}", file);
             }
         }
-        return Err(anyhow!("Namespace conflicts detected. Please resolve conflicts before proceeding."));
+        return Err(anyhow!(
+            "Namespace conflicts detected. Please resolve conflicts before proceeding."
+        ));
     }
 
     // If no conflicts, proceed with merging
