@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct MessageMap {
     messages: HashMap<String, Either<MessageInfo, Box<MessageMap>>>,
 }
@@ -15,6 +15,7 @@ pub struct MessageInfo {
     file_path: String,
 }
 
+#[derive(Clone)]
 pub enum Either<L, R> {
     Left(L),
     Right(R),
@@ -153,13 +154,35 @@ impl MessageHandler {
 
     pub fn write_merged_messages(
         &self,
-        messages: Map<String, Value>,
         output_path: &Path,
     ) -> Result<()> {
+        let messages = self.merge_messages();
         let json = serde_json::to_string_pretty(&messages)?;
         fs::write(output_path, json)?;
         Ok(())
     }
+
+    pub fn remove_messages_for_file(&mut self, file_path: &str) {
+        let mut new_messages = self.extracted_messages.messages.clone();
+        remove_messages(&mut new_messages, file_path);
+        self.extracted_messages.messages = new_messages;
+        // Also remove any conflicts associated with this file
+        self.conflicts.retain(|conflict| !conflict.files.contains(&file_path.to_string()));
+    }
+
+
+}
+
+fn remove_messages(messages: &mut HashMap<String, Either<MessageInfo, Box<MessageMap>>>, file_path: &str) {
+    messages.retain(|_, value| {
+        match value {
+            Either::Left(info) => info.file_path != file_path,
+            Either::Right(map) => {
+                remove_messages(&mut map.messages, file_path);
+                !map.messages.is_empty()
+            }
+        }
+    });
 }
 
 fn load_source_messages(path: &Path) -> Result<Map<String, Value>> {
@@ -307,5 +330,74 @@ mod tests {
         let namespace1 = merged.get("namespace1").unwrap().as_object().unwrap();
         assert_eq!(namespace1.len(), 1);
         assert_eq!(namespace1.get("key1").unwrap(), "value1");
+    }
+
+    #[test]
+    fn test_remove_messages_for_file() {
+        let mut handler = create_test_message_handler();
+
+        // Add messages from two different files
+        handler.add_extracted_message("namespace1".to_string(), "key1".to_string(), "file1.ts".to_string());
+        handler.add_extracted_message("namespace1".to_string(), "key2".to_string(), "file1.ts".to_string());
+        handler.add_extracted_message("namespace2".to_string(), "key4".to_string(), "file2.ts".to_string());
+
+        // Remove messages from file1.ts
+        handler.remove_messages_for_file("file1.ts");
+
+        let merged = handler.merge_messages();
+
+        // Only messages from file2.ts should remain
+        assert_eq!(merged.len(), 1);
+        assert!(merged.get("namespace1").is_none());
+        let namespace2 = merged.get("namespace2").unwrap().as_object().unwrap();
+        assert_eq!(namespace2.len(), 1);
+        assert_eq!(namespace2.get("key4").unwrap(), "value4");
+    }
+
+    #[test]
+    fn test_remove_messages_with_conflicts() {
+        let mut handler = create_test_message_handler();
+
+        // Create a conflict by adding the same key from different files
+        handler.add_extracted_message("namespace1".to_string(), "key1".to_string(), "file1.ts".to_string());
+        handler.add_extracted_message("namespace1".to_string(), "key1".to_string(), "file2.ts".to_string());
+
+        // Verify conflict exists
+        assert_eq!(handler.get_conflicts().len(), 1);
+
+        // Remove one of the conflicting files
+        handler.remove_messages_for_file("file1.ts");
+
+        // Verify conflict is resolved
+        assert_eq!(handler.get_conflicts().len(), 0);
+
+        // Verify remaining message is still there
+        let merged = handler.merge_messages();
+        assert_eq!(merged.len(), 1);
+        let namespace1 = merged.get("namespace1").unwrap().as_object().unwrap();
+        assert_eq!(namespace1.len(), 1);
+        assert_eq!(namespace1.get("key1").unwrap(), "value1");
+    }
+
+    #[test]
+    fn test_remove_nested_messages() {
+        let mut handler = create_test_message_handler();
+
+        // Add nested messages
+        handler.add_extracted_message("parent.child".to_string(), "key1".to_string(), "file1.ts".to_string());
+        handler.add_extracted_message("parent.child".to_string(), "key2".to_string(), "file2.ts".to_string());
+
+        // Remove one file's messages
+        handler.remove_messages_for_file("file1.ts");
+
+        let merged = handler.merge_messages();
+
+        // Verify only the remaining nested message exists
+        assert_eq!(merged.len(), 1);
+        let parent = merged.get("parent").unwrap().as_object().unwrap();
+        let child = parent.get("child").unwrap().as_object().unwrap();
+        assert_eq!(child.len(), 1);
+        assert!(child.get("key1").is_none());
+        assert!(child.get("key2").is_some());
     }
 }
