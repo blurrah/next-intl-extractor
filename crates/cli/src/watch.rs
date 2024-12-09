@@ -1,9 +1,9 @@
-use std::path::{Path, PathBuf};
-use anyhow::{Result, Context};
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher, Event, EventKind};
-use tokio::sync::mpsc;
-use tracing::{info, error};
+use anyhow::{Context, Result};
 use glob::Pattern;
+use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use std::path::{Path, PathBuf};
+use tokio::sync::mpsc;
+use tracing::{error, info};
 
 use crate::messages::MessageHandler;
 use next_intl_resolver::extract_translations;
@@ -16,8 +16,7 @@ async fn process_file_change(
 ) -> Result<()> {
     info!("Processing changed file: {:?}", path);
 
-    let translations = extract_translations(path)
-        .context("Failed to extract translations")?;
+    let translations = extract_translations(path).context("Failed to extract translations")?;
 
     message_handler.add_extracted_messages(translations, path.to_string_lossy().to_string());
     message_handler.write_merged_messages(output_path)?;
@@ -40,9 +39,12 @@ async fn process_file_removal(
 }
 
 /// Watch for file changes and update the message handler with new translations
-pub async fn watch(pattern: &str, output_path: &Path, message_handler: &mut MessageHandler) -> Result<()> {
-    let glob_pattern = Pattern::new(pattern)
-        .context("Failed to create glob pattern")?;
+pub async fn watch(
+    pattern: &str,
+    output_path: &Path,
+    message_handler: &mut MessageHandler,
+) -> Result<()> {
+    let glob_pattern = Pattern::new(pattern).context("Failed to create glob pattern")?;
 
     let (tx, mut rx) = mpsc::channel(32);
 
@@ -56,9 +58,11 @@ pub async fn watch(pattern: &str, output_path: &Path, message_handler: &mut Mess
             });
         },
         Config::default(),
-    ).context("Failed to create file watcher")?;
+    )
+    .context("Failed to create file watcher")?;
 
-    watcher.watch(Path::new("."), RecursiveMode::Recursive)
+    watcher
+        .watch(Path::new("."), RecursiveMode::Recursive)
         .context("Failed to start watching directory")?;
 
     info!("Started watching for file changes...");
@@ -116,23 +120,27 @@ mod tests {
         let pattern = "**/*.{ts,tsx}";
         let async_output_path = output_path.clone();
 
-        let _watch_handle = tokio::spawn(async move {
-            watch(pattern, &async_output_path, &mut message_handler).await
-        });
+        let _watch_handle =
+            tokio::spawn(
+                async move { watch(pattern, &async_output_path, &mut message_handler).await },
+            );
 
         // Give watcher time to start
         sleep(Duration::from_millis(100)).await;
 
         // Create a new file
         let test_file = temp_dir.path().join("test.tsx");
-        fs::write(&test_file, r#"
+        fs::write(
+            &test_file,
+            r#"
             import { useTranslations } from 'next-intl';
 
             export function Test() {
                 const t = useTranslations('TestNS');
                 return <div>{t('hello')}</div>;
             }
-        "#)?;
+        "#,
+        )?;
 
         // Give time for the watcher to process
         sleep(Duration::from_millis(100)).await;
@@ -151,35 +159,42 @@ mod tests {
 
         // Create initial file
         let test_file = temp_dir.path().join("test.tsx");
-        fs::write(&test_file, r#"
+        fs::write(
+            &test_file,
+            r#"
             import { useTranslations } from 'next-intl';
 
             export function Test() {
                 const t = useTranslations('TestNS');
                 return <div>{t('hello')}</div>;
             }
-        "#)?;
+        "#,
+        )?;
 
         // Start watching
         let _watch_path = temp_dir.path().to_path_buf();
         let pattern = "**/*.{ts,tsx}";
         let async_output_path = output_path.clone();
-        let _watch_handle = tokio::spawn(async move {
-            watch(pattern, &async_output_path, &mut message_handler).await
-        });
+        let _watch_handle =
+            tokio::spawn(
+                async move { watch(pattern, &async_output_path, &mut message_handler).await },
+            );
 
         // Give watcher time to start
         sleep(Duration::from_millis(100)).await;
 
         // Modify the file
-        fs::write(&test_file, r#"
+        fs::write(
+            &test_file,
+            r#"
             import { useTranslations } from 'next-intl';
 
             export function Test() {
                 const t = useTranslations('TestNS');
                 return <div>{t('hello')} {t('goodbye')}</div>;
             }
-        "#)?;
+        "#,
+        )?;
 
         // Give time for the watcher to process
         sleep(Duration::from_millis(100)).await;
@@ -199,22 +214,26 @@ mod tests {
 
         // Create initial file
         let test_file = temp_dir.path().join("test.tsx");
-        fs::write(&test_file, r#"
+        fs::write(
+            &test_file,
+            r#"
             import { useTranslations } from 'next-intl';
 
             export function Test() {
                 const t = useTranslations('TestNS');
                 return <div>{t('hello')}</div>;
             }
-        "#)?;
+        "#,
+        )?;
 
         // Start watching
         let _watch_path = temp_dir.path().to_path_buf();
         let pattern = "**/*.{ts,tsx}";
         let async_output_path = output_path.clone();
-        let _watch_handle = tokio::spawn(async move {
-            watch(pattern, &async_output_path, &mut message_handler).await
-        });
+        let _watch_handle =
+            tokio::spawn(
+                async move { watch(pattern, &async_output_path, &mut message_handler).await },
+            );
 
         // Give watcher time to start and process initial file
         sleep(Duration::from_millis(100)).await;
@@ -245,32 +264,39 @@ mod tests {
         // Start watching with specific pattern
         let pattern = "**/*.tsx"; // Only watch tsx files
         let async_output_path = output_path.clone();
-        let _watch_handle = tokio::spawn(async move {
-            watch(pattern, &async_output_path, &mut message_handler).await
-        });
+        let _watch_handle =
+            tokio::spawn(
+                async move { watch(pattern, &async_output_path, &mut message_handler).await },
+            );
 
         // Give watcher time to start
         sleep(Duration::from_millis(100)).await;
 
         // Create a .tsx file (should be watched)
         let tsx_file = temp_dir.path().join("test.tsx");
-        fs::write(&tsx_file, r#"
+        fs::write(
+            &tsx_file,
+            r#"
             import { useTranslations } from 'next-intl';
             export function Test() {
                 const t = useTranslations('TestNS');
                 return <div>{t('hello')}</div>;
             }
-        "#)?;
+        "#,
+        )?;
 
         // Create a .ts file (should be ignored)
         let ts_file = temp_dir.path().join("test.ts");
-        fs::write(&ts_file, r#"
+        fs::write(
+            &ts_file,
+            r#"
             import { useTranslations } from 'next-intl';
             export function test() {
                 const t = useTranslations('IgnoreNS');
                 return t('ignore');
             }
-        "#)?;
+        "#,
+        )?;
 
         // Give time for the watcher to process
         sleep(Duration::from_millis(100)).await;

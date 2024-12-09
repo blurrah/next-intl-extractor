@@ -214,9 +214,6 @@ fn extract_namespace_from_translations_call(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
-    
-    
 
     #[test]
     fn test_new_visitor() {
@@ -251,14 +248,18 @@ mod tests {
             "comp1".to_string(),
             TranslationFunction {
                 namespace: "ns1".to_string(),
-                usages: ["key1".to_string(), "key2".to_string()].into_iter().collect(),
+                usages: ["key1".to_string(), "key2".to_string()]
+                    .into_iter()
+                    .collect(),
             },
         );
         visitor.translation_functions.insert(
             "comp2".to_string(),
             TranslationFunction {
                 namespace: "ns1".to_string(),
-                usages: ["key2".to_string(), "key3".to_string()].into_iter().collect(),
+                usages: ["key2".to_string(), "key3".to_string()]
+                    .into_iter()
+                    .collect(),
             },
         );
 

@@ -1,4 +1,3 @@
-
 use std::{path::PathBuf, process::ExitCode};
 
 use crate::files::find_files;
@@ -9,8 +8,6 @@ use clap::{arg, command, Parser};
 use next_intl_resolver::extract_translations;
 
 use tracing::{error, info, span, Level};
-
-
 
 pub mod files;
 pub mod messages;
@@ -121,7 +118,11 @@ fn run() -> Result<(), Error> {
         // Start watching for file changes using the existing message handler as a cache
         tokio::runtime::Runtime::new()
             .context("Failed to create Tokio runtime")?
-            .block_on(watch(&args.pattern, &args.output_path, &mut message_handler))?;
+            .block_on(watch(
+                &args.pattern,
+                &args.output_path,
+                &mut message_handler,
+            ))?;
     }
 
     Ok(())

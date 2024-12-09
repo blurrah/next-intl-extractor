@@ -78,10 +78,13 @@ impl MessageHandler {
         }
 
         // Insert the final key as a Left value with file information
-        current.insert(key, Either::Left(MessageInfo {
-            value: String::new(),
-            file_path,
-        }));
+        current.insert(
+            key,
+            Either::Left(MessageInfo {
+                value: String::new(),
+                file_path,
+            }),
+        );
     }
 
     /// Get any namespace conflicts that were detected
@@ -90,7 +93,11 @@ impl MessageHandler {
     }
 
     /// Add a set of extracted messages to the extracted messages
-    pub fn add_extracted_messages(&mut self, messages: HashMap<String, HashSet<String>>, file_path: String) {
+    pub fn add_extracted_messages(
+        &mut self,
+        messages: HashMap<String, HashSet<String>>,
+        file_path: String,
+    ) {
         for (namespace, keys) in messages {
             for key in keys {
                 self.add_extracted_message(namespace.clone(), key, file_path.clone());
@@ -152,10 +159,7 @@ impl MessageHandler {
         None
     }
 
-    pub fn write_merged_messages(
-        &self,
-        output_path: &Path,
-    ) -> Result<()> {
+    pub fn write_merged_messages(&self, output_path: &Path) -> Result<()> {
         let messages = self.merge_messages();
         let json = serde_json::to_string_pretty(&messages)?;
         fs::write(output_path, json)?;
@@ -167,20 +171,20 @@ impl MessageHandler {
         remove_messages(&mut new_messages, file_path);
         self.extracted_messages.messages = new_messages;
         // Also remove any conflicts associated with this file
-        self.conflicts.retain(|conflict| !conflict.files.contains(&file_path.to_string()));
+        self.conflicts
+            .retain(|conflict| !conflict.files.contains(&file_path.to_string()));
     }
-
-
 }
 
-fn remove_messages(messages: &mut HashMap<String, Either<MessageInfo, Box<MessageMap>>>, file_path: &str) {
-    messages.retain(|_, value| {
-        match value {
-            Either::Left(info) => info.file_path != file_path,
-            Either::Right(map) => {
-                remove_messages(&mut map.messages, file_path);
-                !map.messages.is_empty()
-            }
+fn remove_messages(
+    messages: &mut HashMap<String, Either<MessageInfo, Box<MessageMap>>>,
+    file_path: &str,
+) {
+    messages.retain(|_, value| match value {
+        Either::Left(info) => info.file_path != file_path,
+        Either::Right(map) => {
+            remove_messages(&mut map.messages, file_path);
+            !map.messages.is_empty()
         }
     });
 }
@@ -225,8 +229,16 @@ mod tests {
     #[test]
     fn test_merge_messages_with_existing_keys() {
         let mut handler = create_test_message_handler();
-        handler.add_extracted_message("namespace1".to_string(), "key1".to_string(), "test_file".to_string());
-        handler.add_extracted_message("namespace1".to_string(), "key2".to_string(), "test_file".to_string());
+        handler.add_extracted_message(
+            "namespace1".to_string(),
+            "key1".to_string(),
+            "test_file".to_string(),
+        );
+        handler.add_extracted_message(
+            "namespace1".to_string(),
+            "key2".to_string(),
+            "test_file".to_string(),
+        );
 
         let merged = handler.merge_messages();
 
@@ -241,8 +253,16 @@ mod tests {
     #[test]
     fn test_merge_messages_with_new_keys() {
         let mut handler = create_test_message_handler();
-        handler.add_extracted_message("namespace1".to_string(), "key1".to_string(), "test_file".to_string());
-        handler.add_extracted_message("namespace1".to_string(), "new_key".to_string(), "test_file".to_string());
+        handler.add_extracted_message(
+            "namespace1".to_string(),
+            "key1".to_string(),
+            "test_file".to_string(),
+        );
+        handler.add_extracted_message(
+            "namespace1".to_string(),
+            "new_key".to_string(),
+            "test_file".to_string(),
+        );
 
         let merged = handler.merge_messages();
 
@@ -256,7 +276,11 @@ mod tests {
     #[test]
     fn test_merge_messages_with_new_namespace() {
         let mut handler = create_test_message_handler();
-        handler.add_extracted_message("new_namespace".to_string(), "new_key".to_string(), "test_file".to_string());
+        handler.add_extracted_message(
+            "new_namespace".to_string(),
+            "new_key".to_string(),
+            "test_file".to_string(),
+        );
 
         let merged = handler.merge_messages();
 
@@ -272,9 +296,21 @@ mod tests {
     #[test]
     fn test_merge_messages_with_multiple_namespaces() {
         let mut handler = create_test_message_handler();
-        handler.add_extracted_message("namespace1".to_string(), "key1".to_string(), "test_file".to_string());
-        handler.add_extracted_message("namespace2".to_string(), "key4".to_string(), "test_file".to_string());
-        handler.add_extracted_message("namespace2".to_string(), "new_key".to_string(), "test_file".to_string());
+        handler.add_extracted_message(
+            "namespace1".to_string(),
+            "key1".to_string(),
+            "test_file".to_string(),
+        );
+        handler.add_extracted_message(
+            "namespace2".to_string(),
+            "key4".to_string(),
+            "test_file".to_string(),
+        );
+        handler.add_extracted_message(
+            "namespace2".to_string(),
+            "new_key".to_string(),
+            "test_file".to_string(),
+        );
 
         let merged = handler.merge_messages();
 
@@ -301,7 +337,10 @@ mod tests {
         let merged = handler.merge_messages();
         assert_eq!(merged.len(), 1);
         let nested_key = merged.get("nested_key").unwrap().as_object().unwrap();
-        assert_eq!(nested_key.get("test").unwrap().as_str().unwrap(), "nested_key.test");
+        assert_eq!(
+            nested_key.get("test").unwrap().as_str().unwrap(),
+            "nested_key.test"
+        );
     }
 
     #[test]
@@ -309,8 +348,16 @@ mod tests {
         let mut handler = create_test_message_handler();
 
         // Add same key in same namespace from different files
-        handler.add_extracted_message("namespace1".to_string(), "key1".to_string(), "file1.ts".to_string());
-        handler.add_extracted_message("namespace1".to_string(), "key1".to_string(), "file2.ts".to_string());
+        handler.add_extracted_message(
+            "namespace1".to_string(),
+            "key1".to_string(),
+            "file1.ts".to_string(),
+        );
+        handler.add_extracted_message(
+            "namespace1".to_string(),
+            "key1".to_string(),
+            "file2.ts".to_string(),
+        );
 
         // Get conflicts
         let conflicts = handler.get_conflicts();
@@ -337,9 +384,21 @@ mod tests {
         let mut handler = create_test_message_handler();
 
         // Add messages from two different files
-        handler.add_extracted_message("namespace1".to_string(), "key1".to_string(), "file1.ts".to_string());
-        handler.add_extracted_message("namespace1".to_string(), "key2".to_string(), "file1.ts".to_string());
-        handler.add_extracted_message("namespace2".to_string(), "key4".to_string(), "file2.ts".to_string());
+        handler.add_extracted_message(
+            "namespace1".to_string(),
+            "key1".to_string(),
+            "file1.ts".to_string(),
+        );
+        handler.add_extracted_message(
+            "namespace1".to_string(),
+            "key2".to_string(),
+            "file1.ts".to_string(),
+        );
+        handler.add_extracted_message(
+            "namespace2".to_string(),
+            "key4".to_string(),
+            "file2.ts".to_string(),
+        );
 
         // Remove messages from file1.ts
         handler.remove_messages_for_file("file1.ts");
@@ -359,8 +418,16 @@ mod tests {
         let mut handler = create_test_message_handler();
 
         // Create a conflict by adding the same key from different files
-        handler.add_extracted_message("namespace1".to_string(), "key1".to_string(), "file1.ts".to_string());
-        handler.add_extracted_message("namespace1".to_string(), "key1".to_string(), "file2.ts".to_string());
+        handler.add_extracted_message(
+            "namespace1".to_string(),
+            "key1".to_string(),
+            "file1.ts".to_string(),
+        );
+        handler.add_extracted_message(
+            "namespace1".to_string(),
+            "key1".to_string(),
+            "file2.ts".to_string(),
+        );
 
         // Verify conflict exists
         assert_eq!(handler.get_conflicts().len(), 1);
@@ -384,8 +451,16 @@ mod tests {
         let mut handler = create_test_message_handler();
 
         // Add nested messages
-        handler.add_extracted_message("parent.child".to_string(), "key1".to_string(), "file1.ts".to_string());
-        handler.add_extracted_message("parent.child".to_string(), "key2".to_string(), "file2.ts".to_string());
+        handler.add_extracted_message(
+            "parent.child".to_string(),
+            "key1".to_string(),
+            "file1.ts".to_string(),
+        );
+        handler.add_extracted_message(
+            "parent.child".to_string(),
+            "key2".to_string(),
+            "file2.ts".to_string(),
+        );
 
         // Remove one file's messages
         handler.remove_messages_for_file("file1.ts");
