@@ -73,7 +73,7 @@ impl Default for TranslationFunctionVisitor {
 
 impl<'a> Visit<'a> for TranslationFunctionVisitor {
     /// Visiting individual functions (mostly components) and set up a new function scope
-    fn visit_function(&mut self, it: &Function<'a>, flags: Option<ScopeFlags>) {
+    fn visit_function(&mut self, it: &Function<'a>, flags: ScopeFlags) {
         if let Some(ident) = &it.id {
             self.enter_scope(ident.name.as_str());
             println!("Entering scope: {}", self.current_scope_name());
