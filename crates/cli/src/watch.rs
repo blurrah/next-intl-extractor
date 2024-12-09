@@ -2,9 +2,9 @@ use anyhow::{Context, Result};
 use glob::Pattern;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
+use tokio::runtime::Handle;
 use tokio::sync::mpsc;
 use tracing::{error, info};
-use tokio::runtime::Handle;
 
 use crate::messages::MessageHandler;
 use next_intl_resolver::extract_translations;

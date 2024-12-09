@@ -124,11 +124,7 @@ fn run() -> Result<(), Error> {
 
         // Run the async watch function in the runtime
         runtime.block_on(async {
-            watch(
-                &args.pattern,
-                &args.output_path,
-                &mut message_handler,
-            ).await
+            watch(&args.pattern, &args.output_path, &mut message_handler).await
         })?;
     }
 
