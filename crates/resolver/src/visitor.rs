@@ -214,9 +214,9 @@ fn extract_namespace_from_translations_call(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use oxc::allocator::Allocator;
-    use oxc::ast::ast::{CallExpression, Expression, ObjectExpression, StringLiteral};
-    use oxc::span::Span;
+    
+    
+    
 
     #[test]
     fn test_new_visitor() {

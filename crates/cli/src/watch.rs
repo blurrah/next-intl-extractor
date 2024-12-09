@@ -16,7 +16,7 @@ async fn process_file_change(
 ) -> Result<()> {
     info!("Processing changed file: {:?}", path);
 
-    let translations = extract_translations(&path)
+    let translations = extract_translations(path)
         .context("Failed to extract translations")?;
 
     message_handler.add_extracted_messages(translations, path.to_string_lossy().to_string());
@@ -33,7 +33,7 @@ async fn process_file_removal(
 ) -> Result<()> {
     info!("Processing removed file: {:?}", path);
 
-    message_handler.remove_messages_for_file(&path.to_string_lossy().to_string());
+    message_handler.remove_messages_for_file(path.to_string_lossy().as_ref());
     message_handler.write_merged_messages(output_path)?;
     info!("Successfully removed translations from {:?}", path);
     Ok(())
@@ -112,11 +112,11 @@ mod tests {
         let (temp_dir, output_path, mut message_handler) = setup_test_env().await?;
 
         // Start watching in a separate task
-        let watch_path = temp_dir.path().to_path_buf();
+        let _watch_path = temp_dir.path().to_path_buf();
         let pattern = "**/*.{ts,tsx}";
         let async_output_path = output_path.clone();
 
-        let watch_handle = tokio::spawn(async move {
+        let _watch_handle = tokio::spawn(async move {
             watch(pattern, &async_output_path, &mut message_handler).await
         });
 
@@ -161,10 +161,10 @@ mod tests {
         "#)?;
 
         // Start watching
-        let watch_path = temp_dir.path().to_path_buf();
+        let _watch_path = temp_dir.path().to_path_buf();
         let pattern = "**/*.{ts,tsx}";
         let async_output_path = output_path.clone();
-        let watch_handle = tokio::spawn(async move {
+        let _watch_handle = tokio::spawn(async move {
             watch(pattern, &async_output_path, &mut message_handler).await
         });
 
@@ -209,10 +209,10 @@ mod tests {
         "#)?;
 
         // Start watching
-        let watch_path = temp_dir.path().to_path_buf();
+        let _watch_path = temp_dir.path().to_path_buf();
         let pattern = "**/*.{ts,tsx}";
         let async_output_path = output_path.clone();
-        let watch_handle = tokio::spawn(async move {
+        let _watch_handle = tokio::spawn(async move {
             watch(pattern, &async_output_path, &mut message_handler).await
         });
 
@@ -245,7 +245,7 @@ mod tests {
         // Start watching with specific pattern
         let pattern = "**/*.tsx"; // Only watch tsx files
         let async_output_path = output_path.clone();
-        let watch_handle = tokio::spawn(async move {
+        let _watch_handle = tokio::spawn(async move {
             watch(pattern, &async_output_path, &mut message_handler).await
         });
 

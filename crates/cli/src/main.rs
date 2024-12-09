@@ -1,4 +1,4 @@
-use std::path::Path;
+
 use std::{path::PathBuf, process::ExitCode};
 
 use crate::files::find_files;
@@ -7,10 +7,10 @@ use crate::watch::watch;
 use anyhow::{anyhow, Context, Error};
 use clap::{arg, command, Parser};
 use next_intl_resolver::extract_translations;
-use next_intl_resolver::visitor::TranslationFunctionVisitor;
+
 use tracing::{error, info, span, Level};
-use tracing_subscriber::FmtSubscriber;
-use tokio::runtime::Runtime;
+
+
 
 pub mod files;
 pub mod messages;

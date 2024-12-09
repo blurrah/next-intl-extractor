@@ -117,13 +117,13 @@ fn run() -> Result<(), Error> {
 
     // Set up logger
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-    let term = Term::stdout();
+    let _term = Term::stdout();
     // Parse arguments
     let args = Args::parse();
 
     // Check if the input directory exists, if not, use the current directory
     // We might just throw an error as it already defaults back to current directory
-    let path = if args.input_dir.exists() && args.input_dir.is_dir() {
+    let _path = if args.input_dir.exists() && args.input_dir.is_dir() {
         args.input_dir
     } else {
         return Err(anyhow!(
