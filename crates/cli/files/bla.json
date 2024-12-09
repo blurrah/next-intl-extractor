@@ -8,6 +8,7 @@
     "Async": {
       "test": "Async.test"
     },
+    "bye2": "HelloFriends.bye2",
     "goodbye": "HelloFriends.goodbye",
     "hello": "HelloFriends.hello",
     "test": "HelloFriends.test",

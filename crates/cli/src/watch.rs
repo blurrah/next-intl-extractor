@@ -4,6 +4,7 @@ use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watche
 use std::path::{Path, PathBuf};
 use tokio::sync::mpsc;
 use tracing::{error, info};
+use tokio::runtime::Handle;
 
 use crate::messages::MessageHandler;
 use next_intl_resolver::extract_translations;
@@ -48,10 +49,13 @@ pub async fn watch(
 
     let (tx, mut rx) = mpsc::channel(32);
 
+    // Ensure we have a runtime handle for the watcher
+    let handle = Handle::current();
+
     let mut watcher = RecommendedWatcher::new(
         move |res| {
             let tx = tx.clone();
-            tokio::spawn(async move {
+            handle.spawn(async move {
                 if let Err(e) = tx.send(res).await {
                     error!("Error sending watch event: {}", e);
                 }
@@ -70,6 +74,7 @@ pub async fn watch(
     while let Some(Ok(Event { kind, paths, .. })) = rx.recv().await {
         for path in paths {
             if !glob_pattern.matches(path.to_string_lossy().as_ref()) {
+                info!("Skipping file {:?}", path);
                 continue;
             }
 
@@ -115,18 +120,13 @@ mod tests {
     async fn test_watch_file_creation() -> Result<()> {
         let (temp_dir, output_path, mut message_handler) = setup_test_env().await?;
 
-        // Start watching in a separate task
+        // Start watching in the same task since watch is now properly async
         let _watch_path = temp_dir.path().to_path_buf();
         let pattern = "**/*.{ts,tsx}";
         let async_output_path = output_path.clone();
 
-        let _watch_handle =
-            tokio::spawn(
-                async move { watch(pattern, &async_output_path, &mut message_handler).await },
-            );
-
-        // Give watcher time to start
-        sleep(Duration::from_millis(100)).await;
+        // Just call watch directly since it's already async
+        watch(pattern, &async_output_path, &mut message_handler).await?;
 
         // Create a new file
         let test_file = temp_dir.path().join("test.tsx");

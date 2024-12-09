@@ -115,14 +115,21 @@ fn run() -> Result<(), Error> {
     if args.watch {
         info!("Watch mode enabled. Watching for file changes...");
 
-        // Start watching for file changes using the existing message handler as a cache
-        tokio::runtime::Runtime::new()
-            .context("Failed to create Tokio runtime")?
-            .block_on(watch(
+        // Create a new runtime with all features enabled
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2) // Specify number of worker threads
+            .enable_all()
+            .build()
+            .context("Failed to create Tokio runtime")?;
+
+        // Run the async watch function in the runtime
+        runtime.block_on(async {
+            watch(
                 &args.pattern,
                 &args.output_path,
                 &mut message_handler,
-            ))?;
+            ).await
+        })?;
     }
 
     Ok(())

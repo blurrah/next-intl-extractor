@@ -6,7 +6,11 @@ import { getTranslations } from "next-intl/server";
 export function MyComponent() {
   const t = useTranslations("HelloFriends");
 
-  return <p>{t("hello")}</p>;
+  return (
+    <p>
+      {t("hello")} {t("bye23")}
+    </p>
+  );
 }
 
 export function SecondComponent() {
