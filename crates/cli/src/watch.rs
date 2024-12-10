@@ -4,7 +4,7 @@ use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watche
 use std::path::{Path, PathBuf};
 use tokio::runtime::Handle;
 use tokio::sync::mpsc;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::messages::MessageHandler;
 use next_intl_resolver::extract_translations;
