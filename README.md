@@ -1,4 +1,4 @@
-# next-intl-cli-tools
+# next-intl-extractor
 
 > [!CAUTION]
 > This is work in progress and does not properly work yet
