@@ -1,7 +1,7 @@
 use anyhow::Result;
 use glob::glob;
-use tracing::info;
 use std::path::PathBuf;
+use tracing::info;
 
 /// Find all files that match a glob pattern
 pub fn find_files(glob_pattern: &str) -> Result<Vec<PathBuf>> {
