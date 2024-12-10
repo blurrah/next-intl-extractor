@@ -6,9 +6,9 @@ on:
       - "rust_v*"
 
 env:
-  RELEASE_BIN: i18n-label-merger
+  RELEASE_BIN: next-intl-extractor
   RELEASE_DIR: artifacts
-  WORKING_DIR: ./i18n-label-tools-binary
+  WORKING_DIR: ./next-intl-extractor-binary
   GITHUB_REF: "${{ github.ref }}"
   WINDOWS_TARGET: x86_64-pc-windows-msvc
   MACOS_TARGET: x86_64-apple-darwin

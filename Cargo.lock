@@ -589,18 +589,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "next-intl-resolver"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "env_logger",
- "log",
- "oxc",
-]
-
-[[package]]
-name = "next-intl-resolver-cli"
-version = "0.1.0"
+name = "next-intl-extractor-cli"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -613,6 +603,16 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "next-intl-resolver"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "env_logger",
+ "log",
+ "oxc",
 ]
 
 [[package]]
