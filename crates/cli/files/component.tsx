@@ -8,7 +8,7 @@ export function MyComponent() {
 
   return (
     <p>
-      {t("hello")} {t("bye23")}
+      {t("hello")} {t("bye23456")}
     </p>
   );
 }

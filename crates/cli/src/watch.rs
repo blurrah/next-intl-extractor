@@ -46,9 +46,9 @@ pub async fn watch(
     message_handler: &mut MessageHandler,
 ) -> Result<()> {
     let glob_pattern = Pattern::new(pattern).context("Failed to create glob pattern")?;
+    debug!("Created glob pattern: {:?}", glob_pattern);
 
     let (tx, mut rx) = mpsc::channel(32);
-
     // Ensure we have a runtime handle for the watcher
     let handle = Handle::current();
 
@@ -73,8 +73,10 @@ pub async fn watch(
 
     while let Some(Ok(Event { kind, paths, .. })) = rx.recv().await {
         for path in paths {
-            if !glob_pattern.matches(path.to_string_lossy().as_ref()) {
-                info!("Skipping file {:?}", path);
+            // Convert absolute path to relative path for glob matching
+            let relative_path = path.strip_prefix(std::env::current_dir()?)?;
+            if !glob_pattern.matches_path(relative_path) {
+                info!("Skipping file {:?}", relative_path);
                 continue;
             }
 
