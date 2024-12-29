@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
 use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
-use std::fs;
 use std::path::Path;
+
+use crate::fs::FileSystem;
 
 #[derive(Default, Clone)]
 pub struct MessageMap {
@@ -21,10 +22,11 @@ pub enum Either<L, R> {
     Right(R),
 }
 
-pub struct MessageHandler {
+pub struct MessageHandler<F: FileSystem> {
     source_messages: Map<String, Value>,
     extracted_messages: MessageMap,
     conflicts: Vec<NamespaceConflict>,
+    fs: F,
 }
 
 #[derive(Debug)]
@@ -34,14 +36,22 @@ pub struct NamespaceConflict {
     pub files: Vec<String>,
 }
 
-impl MessageHandler {
-    pub fn new(source_path: &Path) -> Result<Self> {
-        let source_messages = load_source_messages(source_path)?;
-        Ok(Self {
-            source_messages,
-            extracted_messages: MessageMap::default(),
-            conflicts: Vec::new(),
-        })
+impl<F: FileSystem> MessageHandler<F> {
+    pub fn new(source_path: &Path, fs: F) -> Result<Self> {
+        let content = fs.read_to_string(source_path)
+            .with_context(|| format!("Failed to read source file: {}", source_path.display()))?;
+        let json: Value = serde_json::from_str(&content)
+            .with_context(|| format!("Failed to parse JSON from: {}", source_path.display()))?;
+
+        match json {
+            Value::Object(map) => Ok(Self {
+                source_messages: map,
+                extracted_messages: MessageMap::default(),
+                conflicts: Vec::new(),
+                fs,
+            }),
+            _ => anyhow::bail!("Source file does not contain a JSON object"),
+        }
     }
 
     /// Add a new message to the extracted messages
@@ -162,7 +172,7 @@ impl MessageHandler {
     pub fn write_merged_messages(&self, output_path: &Path) -> Result<()> {
         let messages = self.merge_messages();
         let json = serde_json::to_string_pretty(&messages)?;
-        fs::write(output_path, json)?;
+        self.fs.write(output_path, &json)?;
         Ok(())
     }
 
@@ -189,16 +199,9 @@ fn remove_messages(
     });
 }
 
-fn load_source_messages(path: &Path) -> Result<Map<String, Value>> {
-    let content = fs::read_to_string(path)
-        .with_context(|| format!("Failed to read source file: {}", path.display()))?;
-    let json: Value = serde_json::from_str(&content)
-        .with_context(|| format!("Failed to parse JSON from: {}", path.display()))?;
-
-    match json {
-        Value::Object(map) => Ok(map),
-        _ => anyhow::bail!("Source file does not contain a JSON object"),
-    }
+// Example of how to create a MessageHandler with the standard filesystem
+pub fn create_message_handler(source_path: &Path) -> Result<MessageHandler<crate::fs::StdFileSystem>> {
+    MessageHandler::new(source_path, crate::fs::default_fs())
 }
 
 #[cfg(test)]
@@ -206,7 +209,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn create_test_message_handler() -> MessageHandler {
+    fn create_test_message_handler() -> MessageHandler<crate::fs::StdFileSystem> {
         let source_messages = json!({
             "namespace1": {
                 "key1": "value1",
@@ -223,6 +226,7 @@ mod tests {
             source_messages: source_messages.as_object().unwrap().clone(),
             extracted_messages: MessageMap::default(),
             conflicts: Vec::new(),
+            fs: crate::fs::default_fs(),
         }
     }
 

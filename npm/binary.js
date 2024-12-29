@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const { Binary } = require("binary-install");
-const os = require("os");
-const path = require("path");
+const os = require("node:os");
+const path = require("node:path");
 
 const error = (msg) => {
   console.error(msg);
@@ -35,19 +35,34 @@ const supportedPlatforms = [
     RUST_TARGET: "aarch64-apple-darwin",
     BINARY_NAME: "i18n-label-merger",
   },
+  {
+    TYPE: "Wasm",
+    ARCHITECTURE: "wasm32",
+    RUST_TARGET: "wasm32-unknown-unknown",
+    BINARY_NAME: "i18n-label-merger.wasm",
+  },
 ];
 
 const getPlatformMetadata = () => {
   const type = os.type();
   const architecture = os.arch();
 
-  for (let supportedPlatform of supportedPlatforms) {
+  for (const supportedPlatform of supportedPlatforms) {
     if (
       type === supportedPlatform.TYPE &&
       architecture === supportedPlatform.ARCHITECTURE
     ) {
       return supportedPlatform;
     }
+  }
+
+  // Fallback to Wasm if native platform is not supported
+  const wasmPlatform = supportedPlatforms.find((p) => p.TYPE === "Wasm");
+  if (wasmPlatform) {
+    console.warn(
+      `Platform ${type}/${architecture} not supported, falling back to WebAssembly`
+    );
+    return wasmPlatform;
   }
 
   error(
