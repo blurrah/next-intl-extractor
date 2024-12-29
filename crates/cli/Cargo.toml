@@ -3,6 +3,9 @@ name = "next-intl-extractor-cli"
 version = "0.1.1"
 edition = "2021"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -14,6 +17,10 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde_json = "1.0.120"
 notify = { version = "7.0.0", features = ["serde"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-cli-support = "0.2"
+wasm-bindgen-futures = "0.4"
+getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 tempfile = "3.10.1"

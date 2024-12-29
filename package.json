@@ -4,14 +4,17 @@
   "description": "",
   "main": "index.js",
   "bin": "npm/i18n-label-merger",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:windows": "cargo build --release --target=x86_64-pc-windows-gnu",
     "build:linux": "cargo build --release --target=x86_64-unknown-linux-gnu",
     "build:mac": "cargo build --release --target=x86_64-apple-darwin",
     "build:mac-arm64": "cargo build --release --target=aarch64-apple-darwin",
-    "build:all": "npm run build:windows && npm run build:linux && npm run build:mac && npm run build:mac-arm64",
-    "postinstall": "node ./npm/postinstall.js"
+    "build:wasm": "wasm-pack build crates/cli --target nodejs",
+    "build:all": "npm run build:windows && npm run build:linux && npm run build:mac && npm run build:mac-arm64 && npm run build:wasm",
+    "postinstall": "node ./npm/postinstall.js",
+    "debug:wasm": "node npm/debug-wasm.js"
   },
   "keywords": [],
   "author": "",
@@ -22,5 +25,7 @@
   "dependencies": {
     "binary-install": "^1.1.0"
   },
-  "packageManager": "yarn@1.22.19+sha1.4ba7fc5c6e704fce2066ecbfb0b0d8976fe62447"
+  "devDependencies": {
+    "wasm-pack": "^0.12.1"
+  }
 }
