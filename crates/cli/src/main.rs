@@ -6,12 +6,14 @@ use crate::watch::watch;
 use anyhow::{anyhow, Context, Error};
 use clap::{arg, command, Parser};
 use next_intl_resolver::extract_translations;
+use fs::{default_fs, StdFileSystem};
 
 use tracing::{error, info, span, Level};
 
 pub mod files;
 pub mod messages;
 pub mod watch;
+pub mod fs;
 
 #[derive(Parser, Debug)]
 #[command(name = "next-intl-resolver")]
@@ -62,8 +64,10 @@ fn run() -> Result<(), Error> {
         );
     }
 
+    let fs = default_fs();
+
     // Initialize message handler
-    let mut message_handler = MessageHandler::new(&args.output_path)?;
+    let mut message_handler = MessageHandler::new(&args.output_path, fs)?;
 
     // Find and process files
     let files = find_files(&args.pattern)?;

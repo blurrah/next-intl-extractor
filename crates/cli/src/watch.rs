@@ -6,11 +6,12 @@ use std::time::Duration;
 use tracing::{debug, error, info};
 
 use crate::messages::MessageHandler;
+use crate::fs::StdFileSystem;
 use next_intl_resolver::extract_translations;
 
 fn process_file_change(
     path: &PathBuf,
-    message_handler: &mut MessageHandler,
+    message_handler: &mut MessageHandler<StdFileSystem>,
     output_path: &Path,
 ) -> Result<()> {
     info!("Processing changed file: {:?}", path);
@@ -25,7 +26,7 @@ fn process_file_change(
 
 fn process_file_removal(
     path: &PathBuf,
-    message_handler: &mut MessageHandler,
+    message_handler: &mut MessageHandler<StdFileSystem>,
     output_path: &Path,
 ) -> Result<()> {
     info!("Processing removed file: {:?}", path);
@@ -40,7 +41,7 @@ fn process_file_removal(
 pub fn watch(
     pattern: &str,
     output_path: &Path,
-    message_handler: &mut MessageHandler,
+    message_handler: &mut MessageHandler<StdFileSystem>,
 ) -> Result<()> {
     let glob_pattern = Pattern::new(pattern).context("Failed to create glob pattern")?;
     debug!("Created glob pattern: {:?}", glob_pattern);
@@ -115,15 +116,18 @@ mod tests {
     use super::*;
     use std::fs;
     use tempfile::TempDir;
+    use crate::fs::{default_fs, StdFileSystem};
 
-    fn setup_test_env() -> Result<(TempDir, PathBuf, MessageHandler)> {
+    fn setup_test_env() -> Result<(TempDir, PathBuf, MessageHandler<StdFileSystem>)> {
         let temp_dir = TempDir::new()?;
         let output_path = temp_dir.path().join("messages.json");
 
         // Create initial messages.json
         fs::write(&output_path, "{}")?;
 
-        let message_handler = MessageHandler::new(&output_path)?;
+        let filesystem = default_fs();
+
+        let message_handler = MessageHandler::new(&output_path, filesystem)?;
 
         Ok((temp_dir, output_path, message_handler))
     }
