@@ -560,6 +560,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "next-intl-extractor-wasm"
+version = "0.1.0"
+dependencies = [
+ "getrandom",
+ "js-sys",
+ "next-intl-extractor-cli",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "next-intl-resolver"
 version = "0.1.0"
 dependencies = [

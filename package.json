@@ -11,7 +11,7 @@
     "build:linux": "cargo build --release --target=x86_64-unknown-linux-gnu",
     "build:mac": "cargo build --release --target=x86_64-apple-darwin",
     "build:mac-arm64": "cargo build --release --target=aarch64-apple-darwin",
-    "build:wasm": "wasm-pack build crates/cli --target nodejs",
+    "build:wasm": "wasm-pack build crates/wasm --target nodejs",
     "build:all": "npm run build:windows && npm run build:linux && npm run build:mac && npm run build:mac-arm64 && npm run build:wasm",
     "postinstall": "node ./npm/postinstall.js",
     "debug:wasm": "node npm/debug-wasm.js"
