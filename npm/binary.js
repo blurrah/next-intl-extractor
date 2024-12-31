@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const { Binary } = require("binary-install");
-const os = require("os");
-const path = require("path");
+const os = require("node:os");
+const path = require("node:path");
 
 const error = (msg) => {
   console.error(msg);
@@ -15,25 +15,25 @@ const supportedPlatforms = [
     TYPE: "Windows_NT",
     ARCHITECTURE: "x64",
     RUST_TARGET: "x86_64-pc-windows-msvc",
-    BINARY_NAME: "i18n-label-merger.exe",
+    BINARY_NAME: "next-intl-extractor.exe",
   },
   {
     TYPE: "Linux",
     ARCHITECTURE: "x64",
     RUST_TARGET: "x86_64-unknown-linux-musl",
-    BINARY_NAME: "i18n-label-merger",
+    BINARY_NAME: "next-intl-extractor",
   },
   {
     TYPE: "Darwin",
     ARCHITECTURE: "x64",
     RUST_TARGET: "x86_64-apple-darwin",
-    BINARY_NAME: "i18n-label-merger",
+    BINARY_NAME: "next-intl-extractor",
   },
   {
     TYPE: "Darwin",
     ARCHITECTURE: "arm64",
     RUST_TARGET: "aarch64-apple-darwin",
-    BINARY_NAME: "i18n-label-merger",
+    BINARY_NAME: "next-intl-extractor",
   },
 ];
 
@@ -41,7 +41,7 @@ const getPlatformMetadata = () => {
   const type = os.type();
   const architecture = os.arch();
 
-  for (let supportedPlatform of supportedPlatforms) {
+  for (const supportedPlatform of supportedPlatforms) {
     if (
       type === supportedPlatform.TYPE &&
       architecture === supportedPlatform.ARCHITECTURE
@@ -60,7 +60,7 @@ const getPlatformMetadata = () => {
 function getBinary() {
   const platformMetadata = getPlatformMetadata();
 
-  const url = `https://github.com/blurrah/i18n-label-merger/releases/download/v${version}/${name}-v${version}-${platformMetadata.RUST_TARGET}.tar.gz`;
+  const url = `https://github.com/blurrah/next-intl-extractor/releases/download/v${version}/${name}-v${version}-${platformMetadata.RUST_TARGET}.tar.gz`;
 
   return new Binary(platformMetadata.BINARY_NAME, url, version, {
     installDirectory: path.join(__dirname, "node_modules", ".bin"),
