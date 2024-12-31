@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use glob::Pattern;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 use tracing::{debug, error, info};
 
 use crate::messages::MessageHandler;

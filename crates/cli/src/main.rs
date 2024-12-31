@@ -3,7 +3,7 @@ use std::{path::PathBuf, process::ExitCode};
 use crate::files::find_files;
 use crate::messages::MessageHandler;
 use crate::watch::watch;
-use anyhow::{anyhow, Context, Error};
+use anyhow::{anyhow, Error};
 use clap::{arg, command, Parser};
 use next_intl_resolver::extract_translations;
 
